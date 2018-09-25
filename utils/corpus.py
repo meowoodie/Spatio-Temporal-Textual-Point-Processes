@@ -297,8 +297,8 @@ if __name__ == "__main__":
 		corpora.MmCorpus.serialize("resource/corpus/10k.bigram.tfidf.corpus", corpus_tfidf)
 
 		# convert to dense corpus if necessary
-		dense_corpus = corpus2dense(corpus_tfidf, num_terms=len(ngram_dict)).transpose()
-		np.savetxt("resource/embeddings/docs/10k.bigram.tfidf.corpus.txt", dense_corpus, delimiter=',')
+		# dense_corpus = corpus2dense(corpus_tfidf, num_terms=len(ngram_dict)).transpose()
+		# np.savetxt("resource/embeddings/docs/10k.bigram.tfidf.corpus.txt", dense_corpus, delimiter=',')
 
 	# # load raw corpus and dictionary
 	# # ------------------------------------------------------
