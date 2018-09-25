@@ -28,7 +28,7 @@ if __name__ == "__main__":
 
     # data_x[data_x < 1e-10] = 1e-10
     # matrix_plotter(-1 * np.log(data_x))
-
+    print(ngram_dict)
     print(data_x.shape)
 
     # t   = 1e-2
