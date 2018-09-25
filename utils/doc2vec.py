@@ -49,7 +49,7 @@ if __name__ == "__main__":
     # nonzero_vars = rbm.get_nonzero_vars(data_x)
 
     # save results
-    np.savetxt("resource/embeddings/10k.gbrbm.hid1k.txt", embeddings, delimiter=',')
+    np.savetxt("resource/embeddings/10k.gbrbm.hid1k.txt", embeddings, delimiter=',', fmt='%1.1f')
     # np.savetxt("resource/vars.lam%1.e.lr%1.e.t%1.e.epoch%d.txt" % (lam, lr, t, n_epoches), nonzero_vars, delimiter=',')
     # np.savetxt("resource/errors.lam%1.e.lr%1.e.t%1.e.epoch%d.txt" % (lam, lr, t, n_epoches), errs, delimiter=',')
     # np.savetxt("resource/zeros.lam%1.e.lr%1.e.t%1.e.epoch%d.txt" % (lam, lr, t, n_epoches), zeros, delimiter=',')

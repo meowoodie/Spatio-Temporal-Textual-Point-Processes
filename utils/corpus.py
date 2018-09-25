@@ -278,12 +278,12 @@ if __name__ == "__main__":
 
 	# build corpus from raw text file
 	# -------------------------------
-	corpus_name = "data/56+10k_text.txt"
+	corpus_name = "data/10k_text.txt"
 
 	# build dictionary
 	# ------------------------------------------------------
 	with open(corpus_name, "r") as fhandler:
-		ngram_dict = dictionary(fhandler, min_term_freq=5, n=2)
+		ngram_dict = dictionary(fhandler, min_term_freq=10, n=2)
 		ngram_dict.save("resource/dict/10k.bigram.dict")
 
 	# build tfidf corpus
