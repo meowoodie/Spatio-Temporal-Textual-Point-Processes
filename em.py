@@ -86,26 +86,16 @@ class EM(object):
         lowerb = sum(term_1) + sum(term_2) + sum(term_3)
         return lowerb
 
-    def _update_P(self, i, j, T, tau):
+    def _update_P(self, i, j, t_indices):
         '''update transition probability matrix P'''
-        # normalization
-        T   = (T - self.T0) / (self.Tn - self.T0)
-        tau = (tau - self.T0) / (self.Tn - self.T0)
-        # get time indices of the indicated window
-        t_indices = self._slide_window_indices(T, tau)
         if i > j and j in t_indices and i in t_indices:
             numerator    = self.A[self.u[i]][self.u[j]] * self.beta * np.exp(-1 * self.beta * (self.t[i] - self.t[j]))
             denominator  = self.Mu[self.u[i]] + self._loglik_subterm_1(i, t_indices).sum()
             self.P[i][j] = numerator / denominator
-            # return self.P[i][j]
+            # print('P(%d, %d) = %f' % (i, j, self.P[i][j]))
 
-    def _update_A(self, u, v, T, tau):
+    def _update_A(self, u, v, t_indices, T):
         '''update influential matrix A'''
-        # normalization
-        T   = (T - self.T0) / (self.Tn - self.T0)
-        tau = (tau - self.T0) / (self.Tn - self.T0)
-        # get time indices of the indicated window
-        t_indices = self._slide_window_indices(T, tau)
         # check if A_{u,v} is available
         if self.A_mask[u][v]:
             numerator = []
@@ -117,22 +107,30 @@ class EM(object):
                 for j in t_indices if self.u[j] == v ]
             if len(numerator) == 0 or len(denominator) == 0:
                 self.A_mask[u][v] = 0
+                return
                 # return len(numerator), len(denominator)
             numerator    = sum(numerator)
             denominator  = sum(denominator)
             self.A[u][v] = numerator / denominator
-            # return self.A[u][v]
+            print('A(%d, %d) = %f' % (u, v, self.A[u][v]))
 
-    def fit(self, T, tau):
-        # update P matrix:
-        for i in range(self.n):
-            for j in range(i):
-                self._update_P(i, j)
-            print(self.P[i, :].sum())
-        # update A matrix:
-        for u in range(self.d):
-            for v in range(self.d):
-                self._update_A(u, v)
+    def fit(self, T, tau, epoches=100):
+        # normalization
+        T   = (T - self.T0) / (self.Tn - self.T0)
+        tau = (tau - self.T0) / (self.Tn - self.T0)
+        # get time indices of the indicated window
+        t_indices = self._slide_window_indices(T, tau)
+        # training epoches
+        for e in range(epoches):
+            print('epoch %d:' % e)
+            # update P matrix:
+            for i in t_indices:
+                for j in t_indices[t_indices<i]:
+                    self._update_P(i, j, t_indices)
+            # update A matrix:
+            for u in range(self.d):
+                for v in range(self.d):
+                    self._update_A(u, v, t_indices, T)
 
 
 
@@ -166,7 +164,6 @@ if __name__ == '__main__':
     s = s[t_order]
     # project spatio sequence into components
     u = project2components(s, m)
-    print(u)
     T = t.max() + 1.
     print(t.shape)
     print(u.shape)
@@ -174,6 +171,4 @@ if __name__ == '__main__':
     # print(em.log_likelihood(T=1505779200, tau=1476230400))
     # print(em.jensens_lower_bound(T=1505779200, tau=1476230400))
     # print(em._update_P(100, 0))
-    for i in range(m*m):
-        for j in range(m*m):
-            print(em._update_A(i, j, T=1505779200, tau=1476230400))
+    em.fit(T=1505779200, tau=1476230400, epoches=2)
