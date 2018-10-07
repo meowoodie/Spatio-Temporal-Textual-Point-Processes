@@ -36,12 +36,9 @@ class MPPEM(object):
                                                                 # -1 means uninitiated value
         # normalization
         self.t      = (self.t - self.T0) / (self.Tn - self.T0)
-        # self.w_dur  = self.w_dur / (self.Tn - self.T0)
 
     def _init_P(self, t_indices):
         '''init transition probability matrix'''
-        # get time indices of the indicated window
-        # t_indices  = self._slide_window_indices(T, tau)
         # values for initiated P
         valid_Pij  = [ self.P[i][j]
             for i in t_indices
@@ -103,7 +100,7 @@ class MPPEM(object):
         t_indices_before = lambda i: t_indices[t_indices<i]
         term_1 = [
             self.P[i][i] * np.log(self.Mu[self.u[i]]) + \
-            (self.P[i][t_indices_before(i)] * np.log(self._loglik_subterm_1(i, t_indices))).sum() - \
+            (self.P[i][t_indices_before(i)] * np.log(self._loglik_subterm_1(i, t_indices) + 1e-8)).sum() - \
             (self.P[i][t_indices_before(i)] * np.log(self.P[i][t_indices_before(i)])).sum()
             for i in t_indices ]
         term_2 = [ self.Mu[uj] * (T - tau) for uj in range(self.d) ]
@@ -118,7 +115,8 @@ class MPPEM(object):
         if i > j and j in t_indices and i in t_indices:
             numerator    = self.A[self.u[i]][self.u[j]] * self.beta * np.exp(-1 * self.beta * (self.t[i] - self.t[j])) * np.inner(self.m[i], self.m[j])
             denominator  = self.Mu[self.u[i]] + self._loglik_subterm_1(i, t_indices).sum()
-            self.P[i][j] = numerator / denominator
+            # print('%f, %f' % (numerator, denominator))
+            self.P[i][j] = numerator / ( denominator * len(t_indices) )
             # print('P(%d, %d) = %f' % (i, j, self.P[i][j]))
 
     def _update_A(self, u, v, T, tau):
@@ -142,13 +140,21 @@ class MPPEM(object):
             self.A[u][v] = numerator / denominator
             # print('A(%d, %d) = %f' % (u, v, self.A[u][v]))
 
-    def retrieval_test(self, t_indices, threshold=0.05):
-        alerts = [ (i, j) for i in t_indices for j in range(i) if self.P[i][j] >= threshold ]
-        hits   = [ (i, j) for i, j in alerts if self.l[i] == self.l[j] ]
-        miss   = [ (i, j) for i in t_indices for j in range(i) if self.P[i][j] < threshold and self.l[i] == self.l[j] ]
-        precision = len(hits) / len(alerts)
-        recall    = len(miss) / (len(hits) + len(miss))
-        return precision, recall
+    def retrieval_test(self, t_indices, first_N=100):
+        ''''''
+        # alerts = [ (i, j) for i in t_indices for j in range(i) if self.P[i][j] >= threshold ]
+        # miss   = [ (i, j) for i in t_indices for j in range(i) if self.P[i][j] < threshold and self.l[i] == self.l[j] ]
+        # recall = len(hits) / (len(hits) + len(miss)) if (len(hits) + len(miss)) != 0 else 0.
+        pairs = [ [ self.P[i][j], i, j ] for i in t_indices for j in range(i) ]
+        pairs = np.array(pairs)
+        pairs = pairs[pairs[:, 0].argsort()]
+        # get alert pairs
+        retrieve  = pairs[-first_N:, [1, 2]].astype(np.int32)
+        hits      = [ (i, j) for i, j in retrieve if self.l[i] == self.l[j] ]
+        relevant  = [ (i, j) for i in t_indices for j in range(i) if self.l[i] == self.l[j] ]
+        precision = len(hits) / len(retrieve) if len(retrieve) != 0 else 0.
+        recall    = len(hits) / len(relevant) if len(relevant) != 0 else 0.
+        return len(retrieve), precision, recall
 
     def fit(self, T, tau, epoches=100):
         '''
@@ -163,6 +169,10 @@ class MPPEM(object):
         print('[%s] %d points will be fitted.' % (arrow.now(), len(t_indices)))
         # init P
         self._init_P(t_indices)
+        # self.check_P(t_indices)
+        n_alerts, precision, recall = self.retrieval_test(t_indices, first_N=500)
+        print('[%s] epoch %d\tlower bound:\t%f' % (arrow.now(), 0, self.jensens_lower_bound(T, tau)))
+        print('[%s] \t\tnum of alerts:%d,\tprecision:\t%f,\trecall:\t%f' % (arrow.now(), n_alerts, precision, recall))
         # training epoches
         for e in range(epoches):
             # update P matrix:
@@ -173,9 +183,10 @@ class MPPEM(object):
             for u in range(self.d):
                 for v in range(self.d):
                     self._update_A(u, v, T, tau)
-            precision, recall = self.retrieval_test(t_indices)
-            print('[%s] epoch %d\tlower bound:\t%f' % (arrow.now(), e, self.jensens_lower_bound(T, tau)))
-            print('[%s] \t\tprecision:\t%f,\trecall:\t%f' % (arrow.now(), precision, recall))
+            # self.check_P(t_indices)
+            n_alerts, precision, recall = self.retrieval_test(t_indices, first_N=500)
+            print('[%s] epoch %d\tlower bound:\t%f' % (arrow.now(), e+1, self.jensens_lower_bound(T, tau)))
+            print('[%s] \t\tnum of alerts:%d,\tprecision:\t%f,\trecall:\t%f' % (arrow.now(), n_alerts, precision, recall))
 
     def save(self, path):
         np.savetxt(path + "P.txt", self.P, delimiter=',')
@@ -190,32 +201,48 @@ class MPPEM(object):
         print(sum(test))
 
 if __name__ == '__main__':
+    np.random.seed(0)
     np.set_printoptions(suppress=True)
 
-    # T0 = 1467763200
-    # Tn = 1505779200
-    win_len = 100 # 3600 * 24 * 90
-    step    = 10
-    cold_start_epoches = 100
-    regular_epoches    = 5
-
-    t, m, l, u, u_set = utils.load_police_training_data(n=10056)
+    t, m, l, u, u_set = utils.load_police_training_data(n=10000)
     em = MPPEM(seq_t=t, seq_u=u, seq_l=l, seq_m=m, d=len(set(u)))
-
-    tau_i = 0
-    T_i   = 100
-    print('[%s] --- cold start with extra training epoches = %d in (%d, %d) ---' % \
-        (arrow.now(), cold_start_epoches, t[tau_i], t[T_i]))
-    # init Mu (use the entire data )
     em.init_Mu(alpha=1.)
-    # cold start with extra training epoches
-    em.fit(T=t[T_i], tau=t[tau_i], epoches=cold_start_epoches)
-    while T_i < len(t):
-        # tau_i += step
-        T_i   += step
-        print('[%s] --- regular fit with training epoches = %d in (%d, %d) ---' % \
-            (arrow.now(), regular_epoches, t[tau_i], t[T_i]))
-        em.fit(T=t[T_i], tau=t[tau_i], epoches=regular_epoches)
+    print(em.Mu)
+    em.fit(T=t[1000], tau=t[0], epoches=3)
+
+    # A = [
+    #     0.99145185,   0.27636525,   0.71260547,   0.,           0.,
+    #     0.44734239,   0.07533737,   0.57701897,   0.        ,   0.00000002,
+    #     0.00000001,   0.01799467,   0.        ,   0.45881568,   1.13553751,
+    #     0.00627093,   0.        ,   0.        ,   0.00019884,   0.38988552,
+    #     0.53651664,   0.        ,   1.90577314,   0.42234938,   0.00000011,
+    #     0.00000239,   0.        ,   0.        ,   0.        ,   0.,
+    #     0.        ,   0.00000008,   0.        ,   0.        ,   0.00000161,
+    #     0.43991727,   0.00000366,   0.66614178,   0.85192107,   0.00000008,
+    #     0.72020193,   0.00000007,   0.53348281,   0.00000006,   0.,
+    #     0.55523169,   0.0000006 ,   0.90373427,   0.1110626 ,   0.87045655,
+    #     0.00000001,   0.27914073,   0.00000001,   0.00000009,   0.77067567,
+    #     0.10270855,   0.00000003,   0.62300788,   0.0198951 ,   0.30234276,
+    #     0.86401056,   0.00000005,   0.        ,   0.76465591,   0.00000004,
+    #     0.        ,   0.        ,   0.00000001,   0.        ,   0.00000005,
+    #     0.00102387,   0.03923964,   0.        ,   0.13722308,   0.09206193,
+    #     0.00000021,   0.02470859,   0.00000264,   0 ]
+    # utils.plot_intensities4beats(A, u_set, html_path='A0_map.html')
+
+    # tau_i = 0
+    # T_i   = 100
+    # print('[%s] --- cold start with extra training epoches = %d in (%d, %d) ---' % \
+    #     (arrow.now(), cold_start_epoches, t[tau_i], t[T_i]))
+    # # init Mu (use the entire data )
+    # em.init_Mu(alpha=1.)
+    # # cold start with extra training epoches
+    # em.fit(T=t[T_i], tau=t[tau_i], epoches=cold_start_epoches)
+    # while T_i < len(t):
+    #     # tau_i += step
+    #     T_i   += step
+    #     print('[%s] --- regular fit with training epoches = %d in (%d, %d) ---' % \
+    #         (arrow.now(), regular_epoches, t[tau_i], t[T_i]))
+    #     em.fit(T=t[T_i], tau=t[tau_i], epoches=regular_epoches)
 
 
 

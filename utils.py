@@ -78,7 +78,7 @@ def plot_intensities4beats(
         highlight=True,
         legend_name='Background intensities'
     )
-    folium.LayerControl().add_to(m)
+    # folium.LayerControl().add_to(m)
     map.save(html_path)
 
 def load_police_training_data(n=500):
