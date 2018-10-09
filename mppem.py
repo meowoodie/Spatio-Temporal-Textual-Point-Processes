@@ -15,7 +15,7 @@ class MPPEM(object):
     Marked Point Process Learning via EM algorithm
     '''
 
-    def __init__(self, d, seq_t, seq_u, seq_l, seq_m=None, beta=1.):
+    def __init__(self, d, seq_t, seq_u, seq_l, seq_m=None, beta_1=1e+3, beta_2=1e-3):
         # training data
         self.t      = seq_t # time of each of events
         self.u      = seq_u # component of each of events
@@ -28,7 +28,8 @@ class MPPEM(object):
         self.d      = d           # number of components
         # self.w_dur  = window_duration # duration for the slide window
         # parameters for intensity kernel
-        self.beta   = beta                                      # parameter for intensity kernel
+        self.beta_1 = beta_1                                    # parameter for intensity kernel
+        self.beta_2 = beta_2
         self.A      = np.random.uniform(0, 1, (self.d, self.d)) # influential matrix for intensity kernel
         self.A_mask = np.ones((self.d, self.d))                 # mask for influential matrix
         self.Mu     = np.random.uniform(0, 1, self.d)           # background rates for intensity kernel
@@ -70,14 +71,14 @@ class MPPEM(object):
     def _loglik_subterm_1(self, i, t_indices):
         '''subterm 1 in log-likelihood function'''
         terms = [
-            self.A[self.u[i]][self.u[j]] * self.beta * np.exp(-1 * self.beta * (self.t[i] - self.t[j])) * np.inner(self.m[i], self.m[j])
+            self.A[self.u[i]][self.u[j]] * self.beta_1 * np.exp(-1 * self.beta_2 * (self.t[i] - self.t[j])) * np.inner(self.m[i], self.m[j])
             for j in t_indices[t_indices<i] ]
         return np.array(terms)
 
     def _loglik_subterm_2(self, uj, t_indices, T):
         '''subterm 2 in log-likelihood function'''
         terms = [
-            self.A[self.u[i]][uj] * (1 - np.exp(- self.beta * (T - self.t[i]))) * np.inner(self.m[i], self.m[t_indices[-1]])
+            self.A[self.u[i]][uj] * (1 - np.exp(- self.beta_2 * (T - self.t[i]))) * np.inner(self.m[i], self.m[t_indices[-1]])
             for i in t_indices]
         return np.array(terms)
 
@@ -96,7 +97,7 @@ class MPPEM(object):
     def jensens_lower_bound(self, T, tau):
         '''lower bound for the log-likelihood function according to the jensen's inequality'''
         # get time indices of the indicated window
-        t_indices = self._slide_window_indices(T, tau)
+        t_indices        = self._slide_window_indices(T, tau)
         t_indices_before = lambda i: t_indices[t_indices<i]
         term_1 = [
             self.P[i][i] * np.log(self.Mu[self.u[i]]) + \
@@ -113,7 +114,7 @@ class MPPEM(object):
         # get time indices of the indicated window
         t_indices = self._slide_window_indices(T, tau)
         if i > j and j in t_indices and i in t_indices:
-            numerator    = self.A[self.u[i]][self.u[j]] * self.beta * np.exp(-1 * self.beta * (self.t[i] - self.t[j])) * np.inner(self.m[i], self.m[j])
+            numerator    = self.A[self.u[i]][self.u[j]] * self.beta_1 * np.exp(-1 * self.beta_2 * (self.t[i] - self.t[j])) * np.inner(self.m[i], self.m[j])
             denominator  = self.Mu[self.u[i]] + self._loglik_subterm_1(i, t_indices).sum()
             # print('%f, %f' % (numerator, denominator))
             self.P[i][j] = numerator / ( denominator * len(t_indices) )
@@ -130,7 +131,7 @@ class MPPEM(object):
                 for j in t_indices[np.where(self.u[t_indices] == v)[0]]:
                     if j < i:
                         numerator.append(self.P[i][j])
-            denominator = [ 1 - np.exp(- self.beta * (T - self.t[j]))
+            denominator = [ 1 - np.exp(- self.beta_2 * (T - self.t[j]))
                 for j in t_indices if self.u[j] == v ]
             if len(numerator) == 0 or len(denominator) == 0:
                 self.A_mask[u][v] = 0
@@ -150,7 +151,6 @@ class MPPEM(object):
         # alerts = [ (i, j) for i in t_indices for j in range(i) if self.P[i][j] >= threshold ]
         # miss   = [ (i, j) for i in t_indices for j in range(i) if self.P[i][j] < threshold and self.l[i] == self.l[j] ]
         # recall = len(hits) / (len(hits) + len(miss)) if (len(hits) + len(miss)) != 0 else 0.
-
         # get all the valid pairs
         pairs = [ [ self.P[i][j], i, j ] for i in t_indices for j in range(i) ]
         pairs = np.array(pairs)
@@ -164,11 +164,13 @@ class MPPEM(object):
         recall    = len(hits) / len(relevant) if len(relevant) != 0 else 0.
         return len(retrieve), precision, recall
 
-    def fit(self, T, tau, epoches=100):
+    def fit(self, T, tau, epoches=100, first_N=100, specific_labels=None):
         '''
         maximize the lower bound of the loglikelihood function by estimating
         matrix P and matrix A iteratively.
         '''
+        # F-1 score
+        F_1 = lambda p, r: 2 * p * r / (p + r) if (p + r) != 0. else -1.
         # normalization
         T   = (T - self.T0) / (self.Tn - self.T0)
         tau = (tau - self.T0) / (self.Tn - self.T0)
@@ -178,9 +180,10 @@ class MPPEM(object):
         # init P
         self._init_P(t_indices)
         self.check_P(t_indices)
-        n_alerts, precision, recall = self.retrieval_test(t_indices, first_N=500)
+        n_alerts, init_precision, init_recall = self.retrieval_test(t_indices, specific_labels=specific_labels, first_N=first_N)
         print('[%s] epoch %d\tlower bound:\t%f' % (arrow.now(), 0, self.jensens_lower_bound(T, tau)))
-        print('[%s] \t\tnum of alerts:%d,\tprecision:\t%f,\trecall:\t%f' % (arrow.now(), n_alerts, precision, recall))
+        print('[%s] \t\tnum of alerts:%d,\tprecision:\t%f,\trecall:\t%f,\tF-1 score:\t%f.' % \
+            (arrow.now(), n_alerts, init_precision, init_recall, F_1(init_precision, init_recall)))
         # training epoches
         for e in range(epoches):
             # update P matrix:
@@ -192,10 +195,11 @@ class MPPEM(object):
                 for v in range(self.d):
                     self._update_A(u, v, T, tau)
             self.check_P(t_indices)
-            n_alerts, precision, recall = self.retrieval_test(t_indices, first_N=500)
+            n_alerts, precision, recall = self.retrieval_test(t_indices, specific_labels=specific_labels, first_N=first_N)
             print('[%s] epoch %d\tlower bound:\t%f' % (arrow.now(), e+1, self.jensens_lower_bound(T, tau)))
-            print('[%s] \t\tnum of alerts:%d,\tprecision:\t%f,\trecall:\t%f' % (arrow.now(), n_alerts, precision, recall))
-        return precision, recall
+            print('[%s] \t\tnum of alerts:%d,\tprecision:\t%f,\trecall:\t%f,\tF-1 score:\t%f.' % \
+                (arrow.now(), n_alerts, precision, recall, F_1(precision, recall)))
+        return init_precision, init_recall, precision, recall
 
     def save(self, path):
         np.savetxt(path + "P.txt", self.P, delimiter=',')
@@ -213,37 +217,42 @@ if __name__ == '__main__':
     np.random.seed(0)
     np.set_printoptions(suppress=True)
 
-    precisions = []
-    recalls    = []
+    t, m, l, u, u_set = utils.load_police_training_data(n=10056)
 
-    t, m, l, u, u_set = utils.load_police_training_data(n=10000)
-    for idx in np.linspace(0, 1999, 100).astype(np.int32):
-        em = MPPEM(seq_t=t, seq_u=u, seq_l=l, seq_m=m, d=len(set(u)))
-        em.init_Mu(alpha=10.)
-        precision, recall = em.fit(T=t[idx], tau=t[0], epoches=1)
+    # init_em = MPPEM(seq_t=t, seq_u=u, seq_l=l, seq_m=m, d=len(set(u)))
+    # init_em.init_Mu(alpha=10.)
+    # for idx in np.linspace(1, 100, 100).astype(np.int32) * 20:
+    #     em = MPPEM(seq_t=t, seq_u=u, seq_l=l, seq_m=m, d=len(set(u)))
+    #     em.Mu = init_em.Mu
+    #     init_precision, init_recall, precision, recall = \
+    #         em.fit(T=t[idx], tau=t[0], epoches=1, first_N=20)
+    #     init_precisions.append(init_precision)
+    #     init_recalls.append(init_recall)
+    #     precisions.append(precision)
+    #     recalls.append(recall)
+    #
+    # print(init_precisions)
+    # print(init_recalls)
+    # print(precisions)
+    # print(recalls)
 
-    print(precisions)
-    print(recalls)
+    specific_labels = [ 'burglary', 'pedrobbery', 'DIJAWAN_ADAMS', 'JAYDARIOUS_MORRISON', 'JULIAN_TUCKER', 'THADDEUS_TODD']
 
+    burglary_with_random_indice   = list(range(0, 50))
+    pedrobbery_with_random_indice = list(range(3700, 3900))
+    others_with_random_indice     = list(range(10000, 10056))
+    indice = burglary_with_random_indice + pedrobbery_with_random_indice + others_with_random_indice
+    seq_t  = np.array([ t[idx] for idx in indice ])
+    seq_u  = np.array([ u[idx] for idx in indice ])
+    seq_m  = np.array([ m[idx] for idx in indice ])
+    seq_l  = [ l[idx] for idx in indice ]
 
+    em = MPPEM(seq_t=seq_t, seq_u=seq_u, seq_l=seq_l, seq_m=seq_m, d=len(u_set), beta_1=1e+3, beta_2=1e-3)
+    em.init_Mu(alpha=1e+2)
+    init_precision, init_recall, precision, recall = \
+        em.fit(T=seq_t[-1], tau=seq_t[0], epoches=1, first_N=800)
 
-    # tau_i = 0
-    # T_i   = 100
-    # step  = 20
-    # print('[%s] --- cold start with extra training epoches = %d in (%d, %d) ---' % \
-    #     (arrow.now(), 1, t[tau_i], t[T_i]))
-    # # init Mu (use the entire data )
-    # em.init_Mu(alpha=1.)
-    # # cold start with extra training epoches
-    # em.fit(T=t[T_i], tau=t[tau_i], epoches=1)
-    # while T_i < len(t):
-    #     # tau_i += step
-    #     T_i   += step
-    #     tau_i += step
-    #     print('[%s] --- regular fit with training epoches = %d in (%d, %d) ---' % \
-    #         (arrow.now(), 1, t[tau_i], t[T_i]))
-    #     em.fit(T=t[T_i], tau=t[tau_i], epoches=1)
-
-
-
-    # utils.plot_intensities4beats(em.Mu, u_set)
+    # em = MPPEM(seq_t=t, seq_u=u, seq_l=l, seq_m=m, d=len(set(u)))
+    # em.init_Mu(alpha=10.)
+    # init_precision, init_recall, precision, recall = \
+    #     em.fit(T=t[100], tau=t[0], epoches=1, first_N=500)
