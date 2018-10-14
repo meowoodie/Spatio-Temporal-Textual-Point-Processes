@@ -239,7 +239,7 @@ if __name__ == '__main__':
 
     # for n in np.linspace(50, 2000, 40).astype(np.int32):
     epoches = 5
-    for beta in np.linspace(-10, 10, 81):
+    for beta in np.linspace(-10, 10, 11):
         precision = []
         recall    = []
         print('---------beta = 10^%f ----------' % beta)
