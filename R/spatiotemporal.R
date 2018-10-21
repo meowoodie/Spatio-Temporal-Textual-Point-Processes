@@ -87,14 +87,15 @@ library(viridis)
 # devtools::install_github("dkahle/ggmap", ref = "tidyup")
 # ggmap(get_googlemap())
 
+library('ggmap')
 if(!requireNamespace("devtools")) install.packages("devtools")
-devtools::install_github("dkahle/ggmap", ref = "tidyup")
+devtools::install_github("dkahle/ggmap", force = TRUE)
 register_google(key="AIzaSyBhqJ7iF3b_cYbt8Q4-XYE7ZnDVUhGJax0")
 
 crime.spatiotempo.burglary.df = crime.spatiotempo.complete.df[crime.spatiotempo.complete.df$Labels %in% residential.burglary.set, ]
-crime.spatiotempo.robbery.df = crime.spatiotempo.complete.df[crime.spatiotempo.complete.df$Labels %in% street.robbery.set, ]
+crime.spatiotempo.robbery.df = crime.spatiotempo.complete.df[crime.spatiotempo.complete.df$Labels == 'ROB-STREET-GUN', ]
 
-basemap1 = get_map(location = c(lon = -84.3880, lat = 33.7530), zoom = 12, maptype = "toner-lite")
+basemap1 = get_map(location = c(lon = -84.3880, lat = 33.7530), zoom = 12)
 ggmap(basemap1) +
   stat_density2d(aes(fill = ..level..), alpha = .5, 
                  h = .01,

@@ -9,14 +9,14 @@ from __future__ import print_function
 import sys
 import numpy as np
 
-with open('data/129k.labels.txt', 'r') as fl, \
-     open('data/129k.labels.txt', 'r') as fl1, \
-     open('data/129k.points.txt', 'r') as fp, \
-     open('data/129k.text.txt', 'r') as ft, \
+with open('data/10k.labels.txt', 'r') as fl, \
+     open('data/10k.labels.txt', 'r') as fl1, \
+     open('data/10k.points.txt', 'r') as fp, \
+     open('resource/embeddings/10k.gbrbm.hid1k.txt', 'r') as ft, \
      open('data/meta/burglary_set.txt', 'r') as fbs, \
      open('data/meta/robbery_set.txt', 'r') as frs, \
-     open('data/burglary/all.burglary.labels.txt', 'w') as fbw, \
-     open('data/robbery/all.robbery.labels.txt', 'w') as frw:
+     open('data/subset_burglary/sub.burglary.gbrbm.hid1k.txt', 'w') as fbw, \
+     open('data/subset_robbery/sub.robbery.gbrbm.hid1k.txt', 'w') as frw:
 
     burglary_set = [ line.strip('\n') for line in fbs ]
     robbery_set  = [ line.strip('\n') for line in frs ]
@@ -29,7 +29,7 @@ with open('data/129k.labels.txt', 'r') as fl, \
 
     i_burglary_set = []
     i_robbery_set  = []
-    i            = 0
+    i              = 0
     for line in fl:
         label = line.strip('\n')
         if label in burglary_set:
@@ -42,7 +42,7 @@ with open('data/129k.labels.txt', 'r') as fl, \
     print(len(i_robbery_set))
 
     j = 0
-    for line in fl1:
+    for line in ft:
         if j in i_burglary_set:
             fbw.write(line)
         elif j in i_robbery_set:

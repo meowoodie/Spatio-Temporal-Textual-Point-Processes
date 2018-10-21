@@ -154,10 +154,12 @@ class MPPEM(object):
         pairs = [ [ self.P[i][j], i, j ] for i in t_indices for j in range(i) ]
         pairs = np.array(pairs)
         pairs = pairs[pairs[:, 0].argsort()]
+        print(len(pairs))
         # get retrieve, hits and relevant
         retrieve  = pairs[-first_N:, [1, 2]].astype(np.int32)
         hits      = [ (i, j) for i, j in retrieve if self.l[i] == self.l[j] and specific_label_cond(i) ]
         relevant  = [ (i, j) for i in t_indices for j in range(i) if self.l[i] == self.l[j] and specific_label_cond(i) ]
+        print(len(relevant))
         # get precision and recall
         precision = len(hits) / len(retrieve) if len(retrieve) != 0 else 0.
         recall    = len(hits) / len(relevant) if len(relevant) != 0 else 0.
@@ -169,7 +171,7 @@ class MPPEM(object):
         matrix P and matrix A iteratively.
         '''
         # F-1 score
-        F_1 = lambda p, r: 2 * p * r / (p + r) if (p + r) != 0. else -1.
+        F_1 = lambda p, r: 2 * p * r / (p + r) if (p + r) != 0. else 0.
         # normalization
         T   = (T - self.T0) / (self.Tn - self.T0)
         tau = (tau - self.T0) / (self.Tn - self.T0)
@@ -215,46 +217,33 @@ class MPPEM(object):
 if __name__ == '__main__':
     # np.random.seed(0)
     # np.set_printoptions(suppress=True)
-
-    t, m, l, u, u_set = utils.load_police_training_data(n=10056)
+    epoches  = 5
+    category = 'other'
+    t, m, l, u, u_set, specific_labels = utils.load_police_training_data(n=350, category=category)
 
     init_precision  = 0
     init_recall     = 0
     precisions      = []
     recalls         = []
 
-    specific_labels = [ 'burglary', 'pedrobbery', 'DIJAWAN_ADAMS', 'JAYDARIOUS_MORRISON', 'JULIAN_TUCKER', 'THADDEUS_TODD']
-
-    burglary_with_random_indice   = list(range(0, 50))
-    pedrobbery_with_random_indice = list(range(3700, 3900))
-    others_with_random_indice     = list(range(10000, 10056))
-    indice = burglary_with_random_indice + pedrobbery_with_random_indice + others_with_random_indice
-    seq_t  = np.array([ t[idx] for idx in indice ])
-    seq_u  = np.array([ u[idx] for idx in indice ])
-    seq_m  = np.array([ m[idx] for idx in indice ])
-    seq_l  = [ l[idx] for idx in indice ]
-
-    init_em = MPPEM(seq_t=seq_t, seq_u=seq_u, seq_l=seq_l, seq_m=seq_m, d=len(u_set), beta_1=1., beta_2=1.)
+    init_em = MPPEM(seq_t=t, seq_u=u, seq_l=l, seq_m=m, d=len(u_set), beta_1=1., beta_2=1.)
     init_em.init_Mu(alpha=1e+2)
 
-    # for n in np.linspace(50, 2000, 40).astype(np.int32):
-    epoches = 5
-    for beta in np.linspace(-10, 10, 11):
+    for beta in np.linspace(-5, 10, 51):
         precision = []
         recall    = []
         print('---------beta = 10^%f ----------' % beta)
         for e in range(epoches):
-            em = MPPEM(seq_t=seq_t, seq_u=seq_u, seq_l=seq_l, seq_m=seq_m, d=len(u_set), beta_1=1., beta_2=10**beta)
+            em = MPPEM(seq_t=t, seq_u=u, seq_l=l, seq_m=m, d=len(u_set), beta_1=1., beta_2=10**beta)
             em.Mu = init_em.Mu
-            init_p, init_r, p, r = \
-                em.fit(T=seq_t[-1], tau=seq_t[0], epoches=5, first_N=500)
+            init_p, init_r, p, r = em.fit(T=t[-1], tau=t[0], epoches=epoches, first_N=500, specific_labels=specific_labels)
             precision.append(p)
             recall.append(r)
         precisions.append(precision)
         recalls.append(recall)
 
-    np.savetxt("result/precision_beta2_from-10to10.txt", precisions, delimiter=',')
-    np.savetxt("result/recalls_beta2_from-10to10.txt", recalls, delimiter=',')
+    np.savetxt("result/%s_precision_beta2_from-5to10.txt" % category, precisions, delimiter=',')
+    np.savetxt("result/%s_recalls_beta2_from-5to10.txt" % category, recalls, delimiter=',')
 
     print(init_p)
     print(init_r)

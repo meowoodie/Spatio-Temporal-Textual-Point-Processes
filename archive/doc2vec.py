@@ -15,8 +15,8 @@ from rbm.gbrbm import GBRBM
 # from rbm.reg_rbm import RegRBM
 
 if __name__ == "__main__":
-    dict_name   = "resource/dict/10k.bigram.dict"
-    corpus_name = "resource/corpus/10k.bigram.tfidf.corpus"
+    dict_name   = "resource/dict/all.robbery.bigram.dict"
+    corpus_name = "resource/corpus/all.robbery.bigram.tfidf.corpus"
     # info_name   = "data/2000+56.dataset/new.info.txt"
 
     ngram_dict   = corpora.Dictionary.load(dict_name)
@@ -49,7 +49,7 @@ if __name__ == "__main__":
     # nonzero_vars = rbm.get_nonzero_vars(data_x)
 
     # save results
-    np.savetxt("resource/embeddings/10k.gbrbm.hid1k.txt", embeddings, delimiter=',', fmt='%1.1f')
+    np.savetxt("resource/embeddings/all.robbery.gbrbm.hid1k.txt", embeddings, delimiter=',', fmt='%1.1f')
     # np.savetxt("resource/vars.lam%1.e.lr%1.e.t%1.e.epoch%d.txt" % (lam, lr, t, n_epoches), nonzero_vars, delimiter=',')
     # np.savetxt("resource/errors.lam%1.e.lr%1.e.t%1.e.epoch%d.txt" % (lam, lr, t, n_epoches), errs, delimiter=',')
     # np.savetxt("resource/zeros.lam%1.e.lr%1.e.t%1.e.epoch%d.txt" % (lam, lr, t, n_epoches), zeros, delimiter=',')

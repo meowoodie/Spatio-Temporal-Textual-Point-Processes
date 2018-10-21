@@ -13,6 +13,7 @@ from collections import defaultdict
 from nltk.util import ngrams
 from six import iteritems
 import numpy as np
+import gensim
 import string
 import arrow
 import nltk
@@ -276,27 +277,30 @@ def corpus_histogram(corpus, dictionary, sort_by="weighted_sum", \
 
 if __name__ == "__main__":
 
-	# build corpus from raw text file
-	# -------------------------------
-	corpus_name = "data/robbery/all.robbery.text.txt"
-
-	# build dictionary
-	# ------------------------------------------------------
-	with open(corpus_name, "r") as fhandler:
-		ngram_dict = dictionary(fhandler, min_term_freq=10, n=2)
-		print(ngram_dict)
-		ngram_dict.save("resource/dict/all.robbery.bigram.dict")
-
-	# build tfidf corpus
-	# load dictionary
-	# ------------------------------------------------------
+	# # build corpus from raw text file
+	# # -------------------------------
+	# corpus_name = "data/burglary/all.burglary.text.txt"
+	#
+	# # build dictionary
+	# # ------------------------------------------------------
+	# with open(corpus_name, "r") as fhandler:
+	# 	ngram_dict = dictionary(fhandler, min_term_freq=10, n=2)
+	# 	print(ngram_dict)
+	# 	ngram_dict.save("resource/dict/all.burglary.bigram.dict")
+	#
+	# # build tfidf corpus
+	# # load dictionary
+	# # ------------------------------------------------------
 	ngram_dict = corpora.Dictionary.load("resource/dict/all.robbery.bigram.dict")
-	corpus_tfidf = []
-	with open(corpus_name, "r") as fhandler:
-		corpus_tfidf = corpus_by_documents(fhandler, ngram_dict, n=2)
-		# save the corpus
-		corpora.MmCorpus.serialize("data/robbery/all.robbery.bigram.tfidf.corpus", corpus_tfidf)
+	print(ngram_dict)
+	# corpus_tfidf = []
+	# with open(corpus_name, "r") as fhandler:
+	# 	corpus_tfidf = corpus_by_documents(fhandler, ngram_dict, n=2)
+	# 	# save the corpus
+	# 	corpora.MmCorpus.serialize("resource/corpus/all.burglary.bigram.tfidf.corpus", corpus_tfidf)
 
-		# convert to dense corpus if necessary
-		# dense_corpus = corpus2dense(corpus_tfidf, num_terms=len(ngram_dict)).transpose()
-		# np.savetxt("resource/embeddings/docs/10k.bigram.tfidf.corpus.txt", dense_corpus, delimiter=',')
+	corpus_tfidf = corpora.MmCorpus('resource/corpus/all.robbery.bigram.tfidf.corpus')
+	print(corpus_tfidf)
+	# convert to dense corpus if necessary
+	dense_corpus = gensim.matutils.corpus2dense(corpus_tfidf, num_terms=len(ngram_dict)).transpose()
+	np.savetxt("resource/embeddings/all.robbery.bigram.tfidf.corpus.txt", dense_corpus, delimiter=',')

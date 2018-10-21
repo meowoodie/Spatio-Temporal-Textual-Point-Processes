@@ -81,13 +81,25 @@ def plot_intensities4beats(
     # folium.LayerControl().add_to(m)
     map.save(html_path)
 
-def load_police_training_data(n=500):
+def load_police_training_data(n=500, category='burglary'):
     '''load police training data from local files.'''
     # data path
     geojson_path = '/Users/woodie/Desktop/workspace/Zoning-Analysis/data/apd_beat.geojson'
-    points_path  = 'data/10k.points.txt'
-    marks_path   = 'resource/embeddings/10k.gbrbm.hid1k.txt'
-    labels_path  = 'data/10k.labels.txt'
+    if category == 'burglary':
+        points_path     = 'data/subset_burglary/sub.burglary.points.txt'
+        marks_path      = 'data/subset_burglary/sub.burglary.gbrbm.hid1k.txt'
+        labels_path     = 'data/subset_burglary/sub.burglary.labels.txt'
+        specific_labels = ['burglary']
+    elif category == 'robbery':
+        points_path     = 'data/subset_robbery/sub.robbery.points.txt'
+        marks_path      = 'data/subset_robbery/sub.robbery.gbrbm.hid1k.txt'
+        labels_path     = 'data/subset_robbery/sub.robbery.labels.txt'
+        specific_labels = ['pedrobbery', 'DIJAWAN_ADAMS', 'JAYDARIOUS_MORRISON', 'JULIAN_TUCKER', 'THADDEUS_TODD']
+    else:
+        points_path     = 'data/10k.points.txt'
+        marks_path      = 'resource/embeddings/10k.gbrbm.hid1k.txt'
+        labels_path     = 'data/10k.labels.txt'
+        specific_labels = ['burglary', 'pedrobbery', 'DIJAWAN_ADAMS', 'JAYDARIOUS_MORRISON', 'JULIAN_TUCKER', 'THADDEUS_TODD']
     # load data
     print('[%s] loading training data...' % arrow.now())
     labels = []
@@ -118,4 +130,4 @@ def load_police_training_data(n=500):
     u_set, u = proj2beats(s, geojson_path)
     print('[%s] %d beats were found in the dataset, %d of them are invalid beats.' % \
         (arrow.now(), len(u_set), len(u[u==len(u_set)-1])))
-    return t, m, l, u, u_set
+    return t, m, l, u, u_set, specific_labels
