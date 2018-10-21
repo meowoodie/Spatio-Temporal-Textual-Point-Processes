@@ -217,7 +217,8 @@ class MPPEM(object):
 if __name__ == '__main__':
     # np.random.seed(0)
     # np.set_printoptions(suppress=True)
-    epoches  = 1
+    epoches  = 5
+    iters    = 1
     category = 'burglary'
     t, m, l, u, u_set, specific_labels = utils.load_police_training_data(n=350, category=category)
 
@@ -236,7 +237,7 @@ if __name__ == '__main__':
         for e in range(epoches):
             em = MPPEM(seq_t=t, seq_u=u, seq_l=l, seq_m=m, d=len(u_set), beta_1=1., beta_2=10**beta)
             em.Mu = init_em.Mu
-            init_p, init_r, p, r = em.fit(T=t[-1], tau=t[0], epoches=epoches, first_N=500, specific_labels=specific_labels)
+            init_p, init_r, p, r = em.fit(T=t[-1], tau=t[0], epoches=iters, first_N=500, specific_labels=specific_labels)
             precision.append(p)
             recall.append(r)
         precisions.append(precision)
@@ -268,7 +269,7 @@ if __name__ == '__main__':
         for e in range(epoches):
             em = MPPEM(seq_t=t, seq_u=u, seq_l=l, seq_m=m, d=len(u_set), beta_1=1., beta_2=10**beta)
             em.Mu = init_em.Mu
-            init_p, init_r, p, r = em.fit(T=t[-1], tau=t[0], epoches=epoches, first_N=500, specific_labels=specific_labels)
+            init_p, init_r, p, r = em.fit(T=t[-1], tau=t[0], epoches=iters, first_N=500, specific_labels=specific_labels)
             precision.append(p)
             recall.append(r)
         precisions.append(precision)
