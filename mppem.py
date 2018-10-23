@@ -147,9 +147,6 @@ class MPPEM(object):
             specific_label_cond = lambda i: self.l[i] in specific_labels
         else:
             specific_label_cond = lambda i: True
-        # alerts = [ (i, j) for i in t_indices for j in range(i) if self.P[i][j] >= threshold ]
-        # miss   = [ (i, j) for i in t_indices for j in range(i) if self.P[i][j] < threshold and self.l[i] == self.l[j] ]
-        # recall = len(hits) / (len(hits) + len(miss)) if (len(hits) + len(miss)) != 0 else 0.
         # get all the valid pairs
         pairs = [ [ self.P[i][j], i, j ] for i in t_indices for j in range(i) ]
         pairs = np.array(pairs)
@@ -211,14 +208,14 @@ class MPPEM(object):
         test = [ self.P[i][j]
             for i in t_indices
             for j in t_indices[t_indices<i] ]
-        # print(test)
-        print(sum(test))
+        print('[%s] sum of Pij is %f' % (arrow.now(), sum(test)))
 
 if __name__ == '__main__':
     # np.random.seed(0)
     # np.set_printoptions(suppress=True)
     epoches  = 5
     iters    = 5
+
     category = 'other'
     t, m, l, u, u_set, specific_labels = utils.load_police_training_data(n=10056, category=category)
 
@@ -227,13 +224,6 @@ if __name__ == '__main__':
     precisions      = []
     recalls         = []
 
-    init_em = MPPEM(seq_t=t, seq_u=u, seq_l=l, seq_m=m, d=len(u_set), beta_1=1., beta_2=1.)
-    init_em.init_Mu(alpha=1e+2)
-
-    # t = t[0:50] + t[3700:3900] + t[10000, 10056]
-    # u = u[0:50] + u[3700:3900] + u[10000, 10056]
-    # l = l[0:50] + l[3700:3900] + l[10000, 10056]
-    # m = m[0:50] + m[3700:3900] + m[10000, 10056]
     burglary_with_random_indice   = list(range(0, 50))
     pedrobbery_with_random_indice = list(range(3700, 3900))
     others_with_random_indice     = list(range(10000, 10056))
@@ -242,13 +232,17 @@ if __name__ == '__main__':
     u  = np.array([ u[idx] for idx in indice ])
     m  = np.array([ m[idx] for idx in indice ])
     l  = [ l[idx] for idx in indice ]
+    print(l)
 
-    for beta in np.linspace(0, 10, 11):
+    init_em = MPPEM(seq_t=t, seq_u=u, seq_l=l, seq_m=m, d=len(u_set), beta_1=1., beta_2=1.)
+    init_em.init_Mu(alpha=1e+2)
+
+    for beta in np.linspace(-5, 5, 51):
         precision = []
         recall    = []
         print('---------beta = 10^%f ----------' % beta)
         for e in range(epoches):
-            em = MPPEM(seq_t=t, seq_u=u, seq_l=l, seq_m=m, d=len(u_set), beta_1=beta, beta_2=10**2)
+            em = MPPEM(seq_t=t, seq_u=u, seq_l=l, seq_m=m, d=len(u_set), beta_1=10**beta, beta_2=10**2)
             em.Mu = init_em.Mu
             init_p, init_r, p, r = em.fit(T=t[-1], tau=t[0], epoches=iters, first_N=500, specific_labels=specific_labels)
             precision.append(p)
@@ -256,8 +250,8 @@ if __name__ == '__main__':
         precisions.append(precision)
         recalls.append(recall)
 
-    np.savetxt("result/%s_precision_beta1_from-5to10.txt" % category, precisions, delimiter=',')
-    np.savetxt("result/%s_recalls_beta1_from-5to10.txt" % category, recalls, delimiter=',')
+    np.savetxt("result/%s_precision_beta1_from-5to5.txt" % category, precisions, delimiter=',')
+    np.savetxt("result/%s_recalls_beta1_from-5to5.txt" % category, recalls, delimiter=',')
 
     print(init_p)
     print(init_r)
@@ -265,17 +259,20 @@ if __name__ == '__main__':
     category = 'robbery'
     t, m, l, u, u_set, specific_labels = utils.load_police_training_data(n=350, category=category)
 
+    init_em = MPPEM(seq_t=t, seq_u=u, seq_l=l, seq_m=m, d=len(u_set), beta_1=1., beta_2=1.)
+    init_em.init_Mu(alpha=1e+2)
+
     init_precision  = 0
     init_recall     = 0
     precisions      = []
     recalls         = []
 
-    for beta in np.linspace(0, 10, 11):
+    for beta in np.linspace(-5, 5, 51):
         precision = []
         recall    = []
         print('---------beta = 10^%f ----------' % beta)
         for e in range(epoches):
-            em = MPPEM(seq_t=t, seq_u=u, seq_l=l, seq_m=m, d=len(u_set), beta_1=beta, beta_2=10**2)
+            em = MPPEM(seq_t=t, seq_u=u, seq_l=l, seq_m=m, d=len(u_set), beta_1=10**beta, beta_2=10**2)
             em.Mu = init_em.Mu
             init_p, init_r, p, r = em.fit(T=t[-1], tau=t[0], epoches=iters, first_N=500, specific_labels=specific_labels)
             precision.append(p)
@@ -283,8 +280,8 @@ if __name__ == '__main__':
         precisions.append(precision)
         recalls.append(recall)
 
-    np.savetxt("result/%s_precision_beta1_from-5to10.txt" % category, precisions, delimiter=',')
-    np.savetxt("result/%s_recalls_beta1_from-5to10.txt" % category, recalls, delimiter=',')
+    np.savetxt("result/%s_precision_beta1_from-5to5.txt" % category, precisions, delimiter=',')
+    np.savetxt("result/%s_recalls_beta1_from-5to5.txt" % category, recalls, delimiter=',')
 
     print(init_p)
     print(init_r)
