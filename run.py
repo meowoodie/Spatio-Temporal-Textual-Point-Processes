@@ -39,7 +39,7 @@ if __name__ == '__main__':
     init_em = MPPEM(seq_t=t, seq_u=u, seq_l=l, seq_m=m, d=len(u_set), beta_1=1., beta_2=1.)
     init_em.init_Mu(alpha=1e+2)
 
-    for beta in np.linspace(-20, 0, 51):
+    for beta in np.linspace(-15, 0, 51):
         precision = []
         recall    = []
         print('---------beta = 10^%f ----------' % beta)
@@ -69,7 +69,7 @@ if __name__ == '__main__':
     precisions      = []
     recalls         = []
 
-    for beta in np.linspace(-20, 0, 51):
+    for beta in np.linspace(-15, 0, 51):
         precision = []
         recall    = []
         print('---------beta = 10^%f ----------' % beta)
