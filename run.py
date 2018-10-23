@@ -39,7 +39,7 @@ def exp_convergence(
     init_em.init_Mu(alpha=alpha)
     # experiments
     for e in range(epoches):
-        em = MPPEM(seq_t=t, seq_u=u, seq_l=l, seq_m=m, d=len(u_set), beta_1=10**beta, beta_2=10**2)
+        em = MPPEM(seq_t=t, seq_u=u, seq_l=l, seq_m=m, d=len(u_set), beta_1=beta_1, beta_2=beta_2)
         em.Mu = init_em.Mu
         ps, rs, lls, lbs = em.fit(T=t[-1], tau=t[0], iters=iters, first_N=500, specific_labels=specific_labels)
         precisions.append(ps)
