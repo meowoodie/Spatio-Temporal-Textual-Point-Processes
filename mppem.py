@@ -160,7 +160,7 @@ class MPPEM(object):
         recall    = len(hits) / len(relevant) if len(relevant) != 0 else 0.
         return len(retrieve), precision, recall
 
-    def fit(self, T, tau, epoches=100, first_N=100, specific_labels=None):
+    def fit(self, T, tau, iters=100, first_N=100, specific_labels=None):
         '''
         maximize the lower bound of the loglikelihood function by estimating
         matrix P and matrix A iteratively.
@@ -177,11 +177,15 @@ class MPPEM(object):
         self._init_P(t_indices)
         self.check_P(t_indices)
         n_alerts, init_precision, init_recall = self.retrieval_test(t_indices, specific_labels=specific_labels, first_N=first_N)
-        print('[%s] epoch %d\tlower bound:\t%f' % (arrow.now(), 0, self.log_likelihood(T, tau)))
+        print('[%s] iter %d\tlower bound:\t%f' % (arrow.now(), 0, self.log_likelihood(T, tau)))
         print('[%s] \t\tnum of alerts:%d,\tprecision:\t%f,\trecall:\t%f,\tF-1 score:\t%f.' % \
             (arrow.now(), n_alerts, init_precision, init_recall, F_1(init_precision, init_recall)))
-        # training epoches
-        for e in range(epoches):
+        # training iters
+        precisions = []
+        recalls    = []
+        logliks    = []
+        lowerbs    = []
+        for e in range(iters):
             # update P matrix:
             for i in t_indices:
                 for j in t_indices[t_indices<i]:
@@ -190,12 +194,21 @@ class MPPEM(object):
             for u in range(self.d):
                 for v in range(self.d):
                     self._update_A(u, v, T, tau)
+            # check sum of P
             self.check_P(t_indices)
+            # get retrieval test results
             n_alerts, precision, recall = self.retrieval_test(t_indices, specific_labels=specific_labels, first_N=first_N)
-            print('[%s] epoch %d\tlower bound:\t%f' % (arrow.now(), e+1, self.log_likelihood(T, tau)))
+            loglik = self.log_likelihood(T, tau)
+            lowerb = self.jensens_lower_bound(T, tau)
+            # logging
+            print('[%s] iter %d\tlower bound:\t%f' % (arrow.now(), e+1, ))
             print('[%s] \t\tnum of alerts:%d,\tprecision:\t%f,\trecall:\t%f,\tF-1 score:\t%f.' % \
                 (arrow.now(), n_alerts, precision, recall, F_1(precision, recall)))
-        return init_precision, init_recall, precision, recall
+            precisions.append(precision)
+            recalls.append(recall)
+            logliks.append(loglik)
+            lowerbs.append(lowerb)
+        return precisions, recalls, logliks, lowerbs
 
     def save(self, path):
         np.savetxt(path + "P.txt", self.P, delimiter=',')
