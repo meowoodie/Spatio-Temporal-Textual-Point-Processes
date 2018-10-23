@@ -218,7 +218,7 @@ if __name__ == '__main__':
     # np.random.seed(0)
     # np.set_printoptions(suppress=True)
     epoches  = 5
-    iters    = 1
+    iters    = 5
     category = 'other'
     t, m, l, u, u_set, specific_labels = utils.load_police_training_data(n=10056, category=category)
 
