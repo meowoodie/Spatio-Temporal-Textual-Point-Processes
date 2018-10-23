@@ -243,7 +243,7 @@ if __name__ == '__main__':
     m  = np.array([ m[idx] for idx in indice ])
     l  = [ l[idx] for idx in indice ]
 
-    for beta in np.linspace(-5, 5, 11):
+    for beta in np.linspace(0, 10, 11):
         precision = []
         recall    = []
         print('---------beta = 10^%f ----------' % beta)
@@ -270,7 +270,7 @@ if __name__ == '__main__':
     precisions      = []
     recalls         = []
 
-    for beta in np.linspace(-10, 10, 11):
+    for beta in np.linspace(0, 10, 11):
         precision = []
         recall    = []
         print('---------beta = 10^%f ----------' % beta)
