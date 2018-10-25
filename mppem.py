@@ -56,7 +56,7 @@ class MPPEM(object):
     def init_Mu(self, alpha):
         '''init background rate Mu for each of the components'''
         # all data will be used in estimating the initial Mu.
-        u_window  = self.u # [t_indices]
+        u_window  = self.u
         U_freq    = [ len(u_window[u_window == uj]) for uj in range(self.d) ]
         U_dist    = [ U_freq[uj] / sum(U_freq) for uj in range(self.d) ]
         self.Mu   = np.array(U_dist) * alpha
@@ -149,12 +149,12 @@ class MPPEM(object):
         pairs = [ [ self.P[i][j], i, j ] for i in t_indices for j in range(i) ]
         pairs = np.array(pairs)
         pairs = pairs[pairs[:, 0].argsort()]
-        print(len(pairs))
+        # print(len(pairs))
         # get retrieve, hits and relevant
         retrieve  = pairs[-first_N:, [1, 2]].astype(np.int32)
         hits      = [ (i, j) for i, j in retrieve if self.l[i] == self.l[j] and specific_label_cond(i) ]
         relevant  = [ (i, j) for i in t_indices for j in range(i) if self.l[i] == self.l[j] and specific_label_cond(i) ]
-        print(len(relevant))
+        # print(len(relevant))
         # get precision and recall
         precision = len(hits) / len(retrieve) if len(retrieve) != 0 else 0.
         recall    = len(hits) / len(relevant) if len(relevant) != 0 else 0.
@@ -175,11 +175,10 @@ class MPPEM(object):
         print('[%s] %d points will be fitted.' % (arrow.now(), len(t_indices)))
         # init P
         self._init_P(t_indices)
-        self.check_P(t_indices)
-        n_alerts, init_precision, init_recall = self.retrieval_test(t_indices, specific_labels=specific_labels, first_N=first_N)
-        print('[%s] iter %d\tlower bound:\t%f' % (arrow.now(), 0, self.log_likelihood(T, tau)))
-        print('[%s] \t\tnum of alerts:%d,\tprecision:\t%f,\trecall:\t%f,\tF-1 score:\t%f.' % \
-            (arrow.now(), n_alerts, init_precision, init_recall, F_1(init_precision, init_recall)))
+        # n_alerts, init_precision, init_recall = self.retrieval_test(t_indices, specific_labels=specific_labels, first_N=first_N)
+        # print('[%s] iter %d\tlower bound:\t%f' % (arrow.now(), 0, self.log_likelihood(T, tau)))
+        # print('[%s] \t\tnum of alerts:%d,\tprecision:\t%f,\trecall:\t%f,\tF-1 score:\t%f.' % \
+        #     (arrow.now(), n_alerts, init_precision, init_recall, F_1(init_precision, init_recall)))
         # training iters
         precisions = []
         recalls    = []
@@ -201,8 +200,8 @@ class MPPEM(object):
             loglik = self.log_likelihood(T, tau)
             lowerb = self.jensens_lower_bound(T, tau)
             # logging
-            print('[%s] iter %d\tlower bound:\t%f' % (arrow.now(), e+1, ))
-            print('[%s] \t\tnum of alerts:%d,\tprecision:\t%f,\trecall:\t%f,\tF-1 score:\t%f.' % \
+            print('[%s] iter %d\tlog likli: %f,\tlower bound: %f' % (arrow.now(), e+1, loglik, lowerb))
+            print('[%s] \t\tnum of alerts: %d,\tprecision: %f,\trecall: %f,\tF-1 score: %f.' % \
                 (arrow.now(), n_alerts, precision, recall, F_1(precision, recall)))
             precisions.append(precision)
             recalls.append(recall)

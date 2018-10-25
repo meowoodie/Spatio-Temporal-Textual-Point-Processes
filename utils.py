@@ -11,9 +11,20 @@ import folium
 import webbrowser
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 from pandas import DataFrame
 from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
+
+BEATS_SET = [
+    '050', '101', '102', '103', '104', '105', '106', '107', '108', '109', '110',
+    '111', '112', '113', '114', '201', '202', '203', '204', '205', '206', '207',
+    '208', '209', '210', '211', '212', '213', '301', '302', '303', '304', '305',
+    '306', '307', '308', '309', '310', '311', '312', '313', '401', '402', '403',
+    '404', '405', '406', '407', '408', '409', '410', '411', '412', '413', '414',
+    '501', '502', '503', '504', '505', '506', '507', '508', '509', '510', '511',
+    '512', '601', '602', '603', '604', '605', '606', '607', '608', '609', '610',
+    '611', '612']
 
 def load_geojson(geojson_path):
     '''
@@ -29,7 +40,9 @@ def load_geojson(geojson_path):
         coordinates = feature['geometry']['coordinates']
         if type == 'Polygon':
             geojson_obj[beat] = Polygon(coordinates[0])
-        elif type == 'MultiPolygon':
+        elif type == 'MultiPolygon' and beat == '050':
+            geojson_obj[beat] = Polygon(coordinates[1][0])
+        elif type == 'MultiPolygon' and beat != '050':
             geojson_obj[beat] = Polygon(coordinates[0][0])
     return geojson_obj
 
@@ -45,7 +58,7 @@ def proj2beats(s, geojson_path):
     # load geojson
     geojson_obj = load_geojson(geojson_path)
     # assign the beat where points occurred.
-    beats = [ 'Invalid_beat' for i in range(len(s)) ]
+    beats = [ 'invalid_beat' for i in range(len(s)) ]
     for i in range(len(s)):
         for beat in geojson_obj:
             # if Point(*point).within(geojson_obj[beat]):
@@ -53,19 +66,27 @@ def proj2beats(s, geojson_path):
                 beats[i] = beat
                 break
     # tokenize the beats representation
-    beats_set = list(set(beats) - {'Invalid_beat'})
+    beats_set = list(set(beats) - {'invalid_beat'})
     beats_set.sort()
-    beats_set.append('Invalid_beat')
+    beats_set.append('invalid_beat')
     beats = [ beats_set.index(beat) for beat in beats ]
     return beats_set, np.array(beats)
 
 def plot_intensities4beats(
-        Mu, beats_set,
+        Mu, beats_set, locations=None, labels=None,
         geojson_path='/Users/woodie/Desktop/workspace/Zoning-Analysis/data/apd_beat.geojson',
         html_path='intensity_map.html',
-        center=[33.796480,-84.394220]):
+        center=[33.796480, -84.394220]):
     '''plot background rate intensities over a map.'''
-    intensities = DataFrame(list(zip(beats_set, Mu)), columns=['BEAT', 'intensity'])
+    # color map for points
+    color_map = ['red', 'blue', 'black', 'purple', 'orange', 'brown', 'grey']
+    label_set = ['burglary', 'pedrobbery', 'DIJAWAN_ADAMS', 'JAYDARIOUS_MORRISON', 'JULIAN_TUCKER', 'THADDEUS_TODD']
+    # calculate intensity according to number of points in each beat
+    intensities = DataFrame(list(zip(BEATS_SET, np.zeros(len(BEATS_SET)))), columns=['BEAT', 'intensity'])
+    for beat, mu in zip(beats_set, Mu):
+        intensities.loc[intensities['BEAT'] == beat, 'intensity'] = mu
+    # with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+    #     print(intensities)
     map = folium.Map(location=center, zoom_start=13, zoom_control=True, max_zoom=17, min_zoom=10)
     map.choropleth(
         geo_data=open(geojson_path).read(),
@@ -76,8 +97,12 @@ def plot_intensities4beats(
         fill_opacity=0.7,
         line_opacity=0.2,
         highlight=True,
-        legend_name='Background intensities'
+        legend_name='Number of events'
     )
+    if locations is not None:
+        for coord, label in zip(locations, labels):
+            color = color_map[label_set.index(label)] if label in label_set else color_map[-1]
+            folium.CircleMarker(location=[ coord[1], coord[0] ], color=color, radius=1).add_to(map)
     # folium.LayerControl().add_to(m)
     map.save(html_path)
 
@@ -130,4 +155,4 @@ def load_police_training_data(n=500, category='burglary'):
     u_set, u = proj2beats(s, geojson_path)
     print('[%s] %d beats were found in the dataset, %d of them are invalid beats.' % \
         (arrow.now(), len(u_set), len(u[u==len(u_set)-1])))
-    return t, m, l, u, u_set, specific_labels
+    return t, s, m, l, u, u_set, specific_labels

@@ -17,11 +17,34 @@ pedrobbery_with_random_indice = list(range(3700, 3900))
 others_with_random_indice     = list(range(10000, 10056))
 indice = burglary_with_random_indice + pedrobbery_with_random_indice + others_with_random_indice
 
+def visualize_on_map(category='other', alpha=1e+2, n=10056):
+    # load dataset
+    t, s, m, l, u, u_set, specific_labels = utils.load_police_training_data(n=n, category=category)
+    # init results
+    precisions = []
+    recalls    = []
+    logliks    = []
+    lowerbs    = []
+    # only select a small set of data for category other
+    if category == 'other':
+        t  = np.array([ t[idx] for idx in indice ])
+        s  = np.array([ s[idx] for idx in indice ])
+        u  = np.array([ u[idx] for idx in indice ])
+        m  = np.array([ m[idx] for idx in indice ])
+        l  = [ l[idx] for idx in indice ]
+
+    # init mu
+    # in order to save time, do the initialization of mu one-time at first
+    init_em = MPPEM(seq_t=t, seq_u=u, seq_l=l, seq_m=m, d=len(u_set))
+    init_em.init_Mu(alpha=alpha)
+
+    utils.plot_intensities4beats(init_em.Mu, u_set, locations=s, labels=l, html_path='%s_intensity_map.html' % category)
+
 def exp_convergence(
         beta_1=1e-10, beta_2=1e+2, alpha=1e+2,
-        category='other', epoches=1, iters=20):
+        category='other', epoches=1, iters=20, n=10056):
     # load dataset
-    t, m, l, u, u_set, specific_labels = utils.load_police_training_data(n=10056, category=category)
+    t, _, m, l, u, u_set, specific_labels = utils.load_police_training_data(n=n, category=category)
     # init results
     precisions = []
     recalls    = []
@@ -61,7 +84,7 @@ def exp_beta(
         category='other',
         epoches=5, iters=5):
     # load dataset
-    t, m, l, u, u_set, specific_labels = utils.load_police_training_data(n=10056, category=category)
+    t, _, m, l, u, u_set, specific_labels = utils.load_police_training_data(n=10056, category=category)
     # only select a small set of data for category other
     if category == 'other':
         t  = np.array([ t[idx] for idx in indice ])
@@ -98,5 +121,8 @@ if __name__ == '__main__':
     # np.random.seed(0)
     # np.set_printoptions(suppress=True)
 
+    # visualize data on map
+    visualize_on_map(category='other', n=10056)
+
     # exp_beta()
-    exp_convergence(beta_1=1e-10, beta_2=1e+2, alpha=1e+2, category='other', epoches=1, iters=10)
+    # exp_convergence(beta_1=1., beta_2=1e+2, alpha=1e+2, category='burglary', epoches=1, iters=25, n=350)
