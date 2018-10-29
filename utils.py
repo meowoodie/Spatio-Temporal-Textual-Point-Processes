@@ -12,6 +12,7 @@ import webbrowser
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+import networkx as nx
 from pandas import DataFrame
 from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
@@ -25,6 +26,39 @@ BEATS_SET = [
     '501', '502', '503', '504', '505', '506', '507', '508', '509', '510', '511',
     '512', '601', '602', '603', '604', '605', '606', '607', '608', '609', '610',
     '611', '612']
+
+def calculate_beats_pairwise_distance(beat_set, csv_filename):
+    '''
+    calculate the pairwise distance of beats according to the given adjacency
+    graph. The graph defines the connectivities of beats in the map. Each entries
+    of the distance matrix is the shortest distance from source beat to target
+    beat.
+    '''
+    # get list of beats and adjacency matrix from csv file
+    graph_df   = pd.read_csv(csv_filename)
+    beats      = list(graph_df)[1:]
+    adj_matrix = graph_df.values[:, 1:]
+    # remove special beat from the matrix
+    # - 050
+    rm_idx = beats.index('050')
+    beats.pop(rm_idx)                                    # remove 050 from beats list
+    adj_matrix = np.delete(adj_matrix, (rm_idx), axis=0) # remove 050 row from matrix
+    adj_matrix = np.delete(adj_matrix, (rm_idx), axis=1) # remove 050 col from matrix
+    # build graph by networkx
+    rows, cols = np.where(adj_matrix == 1)
+    edges      = zip(rows.tolist(), cols.tolist())
+    graph      = nx.Graph()
+    graph.add_edges_from(edges)
+    # calculate pairwise distance for beats
+    dist_matrix = np.ones((len(beat_set), len(beat_set))) * -1
+    for src_beat_id in range(len(beat_set)):
+        for trg_beat_id in range(len(beat_set)):
+            # convert to the graph id
+            if (beat_set[src_beat_id] in beats) and (beat_set[trg_beat_id] in beats):
+                source_id = beats.index(beat_set[src_beat_id])
+                target_id = beats.index(beat_set[trg_beat_id])
+                dist_matrix[src_beat_id, trg_beat_id] = len(nx.shortest_path(graph, source=source_id, target=target_id)) - 1
+    return np.array(dist_matrix)
 
 def load_geojson(geojson_path):
     '''
@@ -51,10 +85,6 @@ def proj2beats(s, geojson_path):
     project spatio points into discrete beats area by checking which beats the
     points are located in.
     '''
-    # max_x, min_x = s[:, 0].max(), s[:, 0].min()
-    # max_y, min_y = s[:, 1].max(), s[:, 1].min()
-    # print('max x %f, min x %f.' % (max_x, min_x))
-    # print('max y %f, min y %f.' % (max_y, min_y))
     # load geojson
     geojson_obj = load_geojson(geojson_path)
     # assign the beat where points occurred.
@@ -99,7 +129,7 @@ def plot_intensities4beats(
         highlight=True,
         legend_name='Number of events'
     )
-    if locations is not None:
+    if locations is not None and labels is not None:
         for coord, label in zip(locations, labels):
             color = color_map[label_set.index(label)] if label in label_set else color_map[-1]
             folium.CircleMarker(location=[ coord[1], coord[0] ], color=color, radius=1).add_to(map)
@@ -156,3 +186,9 @@ def load_police_training_data(n=500, category='burglary'):
     print('[%s] %d beats were found in the dataset, %d of them are invalid beats.' % \
         (arrow.now(), len(u_set), len(u[u==len(u_set)-1])))
     return t, s, m, l, u, u_set, specific_labels
+
+# if __name__ == '__main__':
+#     csv_filename = 'data/beats_graph.csv'
+#     dist_matrix  = calculate_beats_pairwise_distance(csv_filename)
+#     print(dist_matrix.shape)
+#     print(dist_matrix)

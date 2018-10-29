@@ -41,7 +41,7 @@ def visualize_on_map(category='other', alpha=1e+2, n=10056):
     utils.plot_intensities4beats(init_em.Mu, u_set, locations=s, labels=l, html_path='%s_intensity_map.html' % category)
 
 def exp_convergence(
-        beta_1=1e-10, beta_2=1e+2, alpha=1e+2,
+        gamma=1., beta=1e-10, alpha=1e+2,
         category='other', epoches=1, iters=20, n=10056):
     # load dataset
     t, _, m, l, u, u_set, specific_labels = utils.load_police_training_data(n=n, category=category)
@@ -59,10 +59,10 @@ def exp_convergence(
     # init mu
     # in order to save time, do the initialization of mu one-time at first
     init_em = MPPEM(seq_t=t, seq_u=u, seq_l=l, seq_m=m, d=len(u_set))
-    init_em.init_Mu(alpha=alpha)
+    init_em.init_Mu(gamma=gamma)
     # experiments
     for e in range(epoches):
-        em = MPPEM(seq_t=t, seq_u=u, seq_l=l, seq_m=m, d=len(u_set), beta_1=beta_1, beta_2=beta_2)
+        em = MPPEM(seq_t=t, seq_u=u, seq_l=l, seq_m=m, d=len(u_set), alpha=alpha, beta=beta, gamma=gamma)
         em.Mu = init_em.Mu
         ps, rs, lls, lbs = em.fit(T=t[-1], tau=t[0], iters=iters, first_N=500, specific_labels=specific_labels)
         precisions.append(ps)
@@ -79,10 +79,10 @@ def exp_convergence(
     np.savetxt("result/%s_loglik_convergence.txt" % category, logliks, delimiter=',')
     np.savetxt("result/%s_lowerb_convergence.txt" % category, lowerbs, delimiter=',')
 
-def exp_beta(
-        beta_range=np.linspace(-15, 0, 51), alpha=1e+2,
-        category='other',
-        epoches=5, iters=5):
+def exp_alpha(
+        alpha_range=np.linspace(-15, 0, 51), beta=1e+2, gamma=1.,
+        category='other', epoches=5, iters=5,
+        csv_filename='data/beats_graph.csv'):
     # load dataset
     t, _, m, l, u, u_set, specific_labels = utils.load_police_training_data(n=10056, category=category)
     # only select a small set of data for category other
@@ -94,26 +94,30 @@ def exp_beta(
     # init results
     precisions = []
     recalls    = []
-    # init mu
     # in order to save time, do the initialization of mu one-time at first
     init_em = MPPEM(seq_t=t, seq_u=u, seq_l=l, seq_m=m, d=len(u_set))
-    init_em.init_Mu(alpha=alpha)
+    # init A
+    distance_matrix = utils.calculate_beats_pairwise_distance(u_set, csv_filename)
+    init_em.init_A(distance_matrix)
+    # init Mu
+    init_em.init_Mu(gamma=gamma)
     # experiments
-    for beta in beta_range:
+    for alpha in alpha_range:
         precision = []
         recall    = []
-        print('---------beta = 10^%f ----------' % beta)
+        print('---------alpha = %f ----------' % alpha)
         for e in range(epoches):
-            em = MPPEM(seq_t=t, seq_u=u, seq_l=l, seq_m=m, d=len(u_set), beta_1=10**beta, beta_2=10**2)
+            em = MPPEM(seq_t=t, seq_u=u, seq_l=l, seq_m=m, d=len(u_set), beta=beta, alpha=alpha)
             em.Mu = init_em.Mu
+            em.A  = init_em.A
             ps, rs, _, _ = em.fit(T=t[-1], tau=t[0], iters=iters, first_N=500, specific_labels=specific_labels)
             precision.append(ps[-1])
             recall.append(rs[-1])
         precisions.append(precision)
         recalls.append(recall)
     # save exp results
-    np.savetxt("result/%s_precision_beta1_from%dto%d.txt" % (category, min(beta_range), max(beta_range)), precisions, delimiter=',')
-    np.savetxt("result/%s_recalls_beta1_from%dto%d.txt" % (category, min(beta_range), max(beta_range)), recalls, delimiter=',')
+    np.savetxt("result/%s_precision_alpha_from%dto%d.txt" % (category, min(beta_range), max(beta_range)), precisions, delimiter=',')
+    np.savetxt("result/%s_recalls_alpha_from%dto%d.txt" % (category, min(beta_range), max(beta_range)), recalls, delimiter=',')
 
 
 
@@ -122,7 +126,9 @@ if __name__ == '__main__':
     # np.set_printoptions(suppress=True)
 
     # visualize data on map
-    visualize_on_map(category='other', n=10056)
+    # visualize_on_map(category='other', n=10056)
 
-    # exp_beta()
+    exp_alpha(
+        alpha_range=np.linspace(0, 20, 51), beta=1e+2, gamma=1.,
+        category='robbery', epoches=1, iters=1)
     # exp_convergence(beta_1=1., beta_2=1e+2, alpha=1e+2, category='burglary', epoches=1, iters=25, n=350)

@@ -13,7 +13,7 @@ class MPPEM(object):
     Marked Point Process Learning via EM algorithm
     '''
 
-    def __init__(self, d, seq_t, seq_u, seq_l, seq_m=None, beta_1=1., beta_2=1.):
+    def __init__(self, d, seq_t, seq_u, seq_l, seq_m=None, alpha=1., beta=1.):
         # training data
         self.t      = seq_t # time of each of events
         self.u      = seq_u # component of each of events
@@ -25,13 +25,13 @@ class MPPEM(object):
         self.n      = len(self.t) # number of events
         self.d      = d           # number of components
         # parameters for intensity kernel
-        self.beta_1 = beta_1                                    # parameter for intensity kernel
-        self.beta_2 = beta_2
-        self.A      = np.random.uniform(0, 1, (self.d, self.d)) # influential matrix for intensity kernel
-        self.A_mask = np.ones((self.d, self.d))                 # mask for influential matrix
-        self.Mu     = np.random.uniform(0, 1, self.d)           # background rates for intensity kernel
-        self.P      = np.ones((self.n, self.n)) * -1            # transition probability matrix
-                                                                # -1 means uninitiated value
+        self.beta   = beta                             # parameter for intensity kernel
+        self.alpha  = alpha
+        self.A      = np.zeros((self.d, self.d))       # influential matrix for intensity kernel
+        self.A_mask = np.ones((self.d, self.d))        # mask for influential matrix
+        self.Mu     = np.random.uniform(0, 1, self.d)  # background rates for intensity kernel
+        self.P      = np.ones((self.n, self.n)) * -1   # transition probability matrix
+                                                       # -1 means uninitiated value
         # normalization
         self.t      = (self.t - self.T0) / (self.Tn - self.T0)
 
@@ -53,13 +53,30 @@ class MPPEM(object):
             for i, j in invalid_ij:
                 self.P[i][j] = init_val + np.random.normal(0, 1e-8, 1)[0]
 
-    def init_Mu(self, alpha):
+    def init_A(self, distance_matrix, gamma=1e+3):
+        '''init spatial influential matrix'''
+        assert distance_matrix.shape[0] == distance_matrix.shape[1] == self.d, \
+            'invalid shape of distance matrix'
+        # calculate the influential intensity
+        for i in range(self.d):
+            for j in range(self.d):
+                # intensity decay exponentially over the distance
+                self.A[i, j] = 1. / (2.**distance_matrix[i, j]) \
+                    if distance_matrix[i, j] != -1 \
+                    else 0
+        self.A = self.A * gamma
+        # normalization
+        for i in range(self.d):
+            if self.A[i, :].sum() > 0:
+                self.A[i, :] = self.A[i, :] / self.A[i, :].sum()
+
+    def init_Mu(self, gamma):
         '''init background rate Mu for each of the components'''
         # all data will be used in estimating the initial Mu.
         u_window  = self.u
         U_freq    = [ len(u_window[u_window == uj]) for uj in range(self.d) ]
         U_dist    = [ U_freq[uj] / sum(U_freq) for uj in range(self.d) ]
-        self.Mu   = np.array(U_dist) * alpha
+        self.Mu   = np.array(U_dist) * gamma
 
     def _slide_window_indices(self, T, tau):
         '''select the indices of the sequence within the slide window'''
@@ -68,14 +85,14 @@ class MPPEM(object):
     def _loglik_subterm_1(self, i, t_indices):
         '''subterm 1 in log-likelihood function'''
         terms = [
-            self.A[self.u[i]][self.u[j]] * self.beta_1 * np.exp(-1 * self.beta_2 * (self.t[i] - self.t[j]) + np.inner(self.m[i], self.m[j]))
+            (self.A[self.u[i]][self.u[j]]**self.alpha) * 1. * np.exp(-1 * self.beta * (self.t[i] - self.t[j]) + np.inner(self.m[i], self.m[j]))
             for j in t_indices[t_indices<i] ]
         return np.array(terms)
 
     def _loglik_subterm_2(self, uj, t_indices, T):
         '''subterm 2 in log-likelihood function'''
         terms = [
-            self.A[self.u[i]][uj] * (1 - np.exp(- self.beta_2 * (T - self.t[i])) + np.inner(self.m[i], self.m[t_indices[-1]]))
+            (self.A[self.u[i]][uj]**self.alpha) * (1 - np.exp(- self.beta * (T - self.t[i])) + np.inner(self.m[i], self.m[t_indices[-1]]))
             for i in t_indices]
         return np.array(terms)
 
@@ -111,11 +128,9 @@ class MPPEM(object):
         # get time indices of the indicated window
         t_indices = self._slide_window_indices(T, tau)
         if i > j and j in t_indices and i in t_indices:
-            numerator    = self.A[self.u[i]][self.u[j]] * self.beta_1 * np.exp(-1 * self.beta_2 * (self.t[i] - self.t[j]) + np.inner(self.m[i], self.m[j]))
+            numerator    = (self.A[self.u[i]][self.u[j]]**self.alpha) * 1. * np.exp(-1 * self.beta * (self.t[i] - self.t[j]) + np.inner(self.m[i], self.m[j]))
             denominator  = self.Mu[self.u[i]] + self._loglik_subterm_1(i, t_indices).sum()
-            # print('%f, %f' % (numerator, denominator))
             self.P[i][j] = numerator / ( denominator * len(t_indices) )
-            # print('P(%d, %d) = %f' % (i, j, self.P[i][j]))
 
     def _update_A(self, u, v, T, tau):
         '''update influential matrix A'''
@@ -128,14 +143,14 @@ class MPPEM(object):
                 for j in t_indices[np.where(self.u[t_indices] == v)[0]]:
                     if j < i:
                         numerator.append(self.P[i][j])
-            denominator = [ 1 - np.exp(- self.beta_2 * (T - self.t[j]))
+            denominator = [ 1 - np.exp(- self.beta * (T - self.t[j]))
                 for j in t_indices if self.u[j] == v ]
             if len(numerator) == 0 or len(denominator) == 0:
                 self.A_mask[u][v] = 0
                 return
             numerator    = sum(numerator)
             denominator  = sum(denominator)
-            self.A[u][v] = numerator / denominator
+            self.A[u][v] = (numerator / denominator) # ** (1/self.alpha)
             # print('A(%d, %d) = %f' % (u, v, self.A[u][v]))
 
     def retrieval_test(self, t_indices, specific_labels=None, first_N=100):

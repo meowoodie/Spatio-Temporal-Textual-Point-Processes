@@ -175,8 +175,8 @@ if __name__ == '__main__':
     all_recall         = np.loadtxt("result/other_recalls_beta1_from-15to0.txt", delimiter=',')
     burglary_precision = np.loadtxt("result/burglary_precision_beta1_from-15to0.txt", delimiter=',')
     burglary_recall    = np.loadtxt("result/burglary_recalls_beta1_from-15to0.txt", delimiter=',')
-    robbery_precision  = np.loadtxt("result/burglary_precision_beta1_from-15to0.txt", delimiter=',')
-    robbery_recall     = np.loadtxt("result/burglary_recalls_beta1_from-15to0.txt", delimiter=',')
+    robbery_precision  = np.loadtxt("result/robbery_precision_beta1_from-15to0.txt", delimiter=',')
+    robbery_recall     = np.loadtxt("result/robbery_recalls_beta1_from-15to0.txt", delimiter=',')
 
     all_precision      = all_precision.mean(axis=1)
     all_recall         = all_recall.mean(axis=1)
