@@ -123,11 +123,11 @@ def plot_intensities4beats(
         data=intensities,
         columns=['BEAT', 'intensity'],
         key_on='feature.properties.BEAT',
-        fill_color='YlGn',
+        fill_color='BuPu', # 'YlGn',
         fill_opacity=0.7,
         line_opacity=0.2,
         highlight=True,
-        legend_name='Number of events'
+        legend_name='Intensity'
     )
     if locations is not None and labels is not None:
         for coord, label in zip(locations, labels):

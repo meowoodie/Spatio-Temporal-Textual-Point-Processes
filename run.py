@@ -128,13 +128,14 @@ if __name__ == '__main__':
     # visualize data on map
     # visualize_on_map(category='other', n=10056)
 
-    exp_alpha(
-        alpha_range=np.linspace(0, 20, 51), beta=1e+2, gamma=1.,
-        category='robbery', epoches=3, iters=1)
-    exp_alpha(
-        alpha_range=np.linspace(0, 20, 51), beta=1e+2, gamma=1.,
-        category='burglary', epoches=3, iters=1)
-    exp_alpha(
-        alpha_range=np.linspace(0, 20, 51), beta=1e+2, gamma=1.,
-        category='other', epoches=3, iters=1)
+    # exp_alpha(
+    #     alpha_range=np.linspace(0, 20, 51), beta=1e+2, gamma=1.,
+    #     category='robbery', epoches=3, iters=1)
+    # exp_alpha(
+    #     alpha_range=np.linspace(0, 20, 51), beta=1e+2, gamma=1.,
+    #     category='burglary', epoches=3, iters=1)
+    # exp_alpha(
+    #     alpha_range=np.linspace(0, 20, 51), beta=1e+2, gamma=1.,
+    #     category='other', epoches=3, iters=1)
+
     # exp_convergence(beta_1=1., beta_2=1e+2, alpha=1e+2, category='burglary', epoches=1, iters=25, n=350)
