@@ -66,9 +66,9 @@ class MPPEM(object):
                     else 0
         self.A = self.A * gamma
         # normalization
-        for i in range(self.d):
-            if self.A[i, :].sum() > 0:
-                self.A[i, :] = self.A[i, :] / self.A[i, :].sum()
+        # for i in range(self.d):
+        #     if self.A[i, :].sum() > 0:
+        #         self.A[i, :] = self.A[i, :] / self.A[i, :].sum()
 
     def init_Mu(self, gamma):
         '''init background rate Mu for each of the components'''

@@ -98,7 +98,7 @@ def exp_alpha(
     init_em = MPPEM(seq_t=t, seq_u=u, seq_l=l, seq_m=m, d=len(u_set))
     # init A
     distance_matrix = utils.calculate_beats_pairwise_distance(u_set, csv_filename)
-    init_em.init_A(distance_matrix)
+    init_em.init_A(distance_matrix, gamma=gamma)
     # init Mu
     init_em.init_Mu(gamma=gamma)
     # experiments
@@ -131,4 +131,10 @@ if __name__ == '__main__':
     exp_alpha(
         alpha_range=np.linspace(0, 20, 51), beta=1e+2, gamma=1.,
         category='robbery', epoches=3, iters=1)
+    exp_alpha(
+        alpha_range=np.linspace(0, 20, 51), beta=1e+2, gamma=1.,
+        category='burglary', epoches=3, iters=1)
+    exp_alpha(
+        alpha_range=np.linspace(0, 20, 51), beta=1e+2, gamma=1.,
+        category='other', epoches=3, iters=1)
     # exp_convergence(beta_1=1., beta_2=1e+2, alpha=1e+2, category='burglary', epoches=1, iters=25, n=350)
