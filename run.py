@@ -116,8 +116,8 @@ def exp_alpha(
         precisions.append(precision)
         recalls.append(recall)
     # save exp results
-    np.savetxt("result/%s_precision_alpha_from%dto%d.txt" % (category, min(beta_range), max(beta_range)), precisions, delimiter=',')
-    np.savetxt("result/%s_recalls_alpha_from%dto%d.txt" % (category, min(beta_range), max(beta_range)), recalls, delimiter=',')
+    np.savetxt("result/%s_precision_alpha_from%dto%d.txt" % (category, min(alpha_range), max(alpha_range)), precisions, delimiter=',')
+    np.savetxt("result/%s_recalls_alpha_from%dto%d.txt" % (category, min(alpha_range), max(alpha_range)), recalls, delimiter=',')
 
 
 
