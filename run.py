@@ -120,7 +120,7 @@ def exp_alpha(
     np.savetxt("result/%s_recalls_alpha_from%dto%d.txt" % (category, min(alpha_range), max(alpha_range)), recalls, delimiter=',')
 
 def exp_retrival(
-        retrieval_range=np.linspace(100, 1000, 51).astype(np.int32), n=10056,
+        retrieval_range=np.linspace(100, 1000, 51).astype(np.int32), n=10056, alpha=1., beta=1.,
         category='other', epoches=5, iters=5,
         csv_filename='data/beats_graph.csv'):
     # load dataset
@@ -149,7 +149,7 @@ def exp_retrival(
         recall    = []
         print('---------N = %d ----------' % N)
         for e in range(epoches):
-            em = MPPEM(seq_t=t, seq_u=u, seq_l=l, seq_m=m, d=len(u_set), beta=1e+2, alpha=2.)
+            em = MPPEM(seq_t=t, seq_u=u, seq_l=l, seq_m=m, d=len(u_set), beta=beta, alpha=alpha)
             em.Mu = init_em.Mu
             em.A  = init_em.A
             ps, rs, _, _ = em.fit(T=t[-1], tau=t[0], iters=iters, first_N=N, specific_labels=specific_labels)
@@ -182,11 +182,14 @@ if __name__ == '__main__':
 
     # exp_convergence(beta_1=1., beta_2=1e+2, alpha=1e+2, category='burglary', epoches=1, iters=25, n=350)
     exp_retrival(
-        retrieval_range=np.linspace(100, 1000, 51).astype(np.int32), n=10056
+        retrieval_range=np.linspace(100, 1000, 51).astype(np.int32),
+        n=10056, alpha=2., beta=1e+2,
         category='robbery', epoches=3, iters=2)
     exp_retrival(
-        retrieval_range=np.linspace(100, 1000, 51).astype(np.int32), n=350
+        retrieval_range=np.linspace(100, 1000, 51).astype(np.int32),
+        n=350, alpha=7., beta=1e+2,
         category='burglary', epoches=3, iters=2)
     exp_retrival(
-        retrieval_range=np.linspace(100, 1000, 51).astype(np.int32), n=10056
+        retrieval_range=np.linspace(100, 1000, 51).astype(np.int32),
+        n=10056, alpha=6., beta=1e+2,
         category='other', epoches=3, iters=2)
