@@ -13,6 +13,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import networkx as nx
+from scipy import spatial
 from pandas import DataFrame
 from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
@@ -142,17 +143,17 @@ def load_police_training_data(n=500, category='burglary'):
     geojson_path = '/Users/woodie/Desktop/workspace/Zoning-Analysis/data/apd_beat.geojson'
     if category == 'burglary':
         points_path     = 'data/subset_burglary/sub.burglary.points.txt'
-        marks_path      = 'data/subset_burglary/sub.burglary.gbrbm.hid1k.txt'
+        marks_path      = 'data/subset_burglary/sub.burglary.svd.hid1k.txt' # gbrbm.hid1k.txt'
         labels_path     = 'data/subset_burglary/sub.burglary.labels.txt'
         specific_labels = ['burglary']
     elif category == 'robbery':
         points_path     = 'data/subset_robbery/sub.robbery.points.txt'
-        marks_path      = 'data/subset_robbery/sub.robbery.gbrbm.hid1k.txt'
+        marks_path      = 'data/subset_robbery/sub.robbery.svd.hid1k.txt' # gbrbm.hid1k.txt'
         labels_path     = 'data/subset_robbery/sub.robbery.labels.txt'
         specific_labels = ['pedrobbery', 'DIJAWAN_ADAMS', 'JAYDARIOUS_MORRISON', 'JULIAN_TUCKER', 'THADDEUS_TODD']
     else:
         points_path     = 'data/10k.points.txt'
-        marks_path      = 'resource/embeddings/10k.gbrbm.hid1k.txt'
+        marks_path      = 'resource/embeddings/10k.svd.hid1k.txt' # gbrbm.hid1k.txt'
         labels_path     = 'data/10k.labels.txt'
         specific_labels = ['burglary', 'pedrobbery', 'DIJAWAN_ADAMS', 'JAYDARIOUS_MORRISON', 'JULIAN_TUCKER', 'THADDEUS_TODD']
     # load data
@@ -186,6 +187,29 @@ def load_police_training_data(n=500, category='burglary'):
     print('[%s] %d beats were found in the dataset, %d of them are invalid beats.' % \
         (arrow.now(), len(u_set), len(u[u==len(u_set)-1])))
     return t, s, m, l, u, u_set, specific_labels
+
+def retrieval_test(embeddings, labels, specific_labels=None, first_N=100):
+    '''get precision and recall of retrieval test'''
+    t_indices = list(range(0, len(embeddings)))
+    distantce = lambda i, j: 1 - spatial.distance.cosine(embeddings[i], embeddings[j])
+    # only do the test on the specific labels if specific_labels is not None
+    if specific_labels:
+        specific_label_cond = lambda i: labels[i] in specific_labels
+    else:
+        specific_label_cond = lambda i: True
+    # get all the valid pairs
+    pairs = [ [ distantce(i, j), i, j ] for i in t_indices for j in range(i) ]
+    pairs = np.array(pairs)
+    pairs = pairs[pairs[:, 0].argsort()]
+    # get retrieve, hits and relevant
+    retrieve  = pairs[-first_N:, [1, 2]].astype(np.int32)
+    hits      = [ (i, j) for i, j in retrieve if labels[i] == labels[j] and specific_label_cond(i) ]
+    relevant  = [ (i, j) for i in t_indices for j in range(i) if labels[i] == labels[j] and specific_label_cond(i) ]
+    # print(len(relevant))
+    # get precision and recall
+    precision = len(hits) / len(retrieve) if len(retrieve) != 0 else 0.
+    recall    = len(hits) / len(relevant) if len(relevant) != 0 else 0.
+    return precision, recall
 
 # if __name__ == '__main__':
 #     csv_filename = 'data/beats_graph.csv'

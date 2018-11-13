@@ -127,81 +127,148 @@ def lines_figure(
         legend.get_frame()
         pdf.savefig(fig)
 
+def baselines_figure(
+        xspan, ysttpp_rbm, ysvd, yae,
+        title='Recall of 500 retrieval', xlabel=r'$N$', ylabel='recall',
+        filename='result/comp_burglary_fscore_N_from100to1000.pdf'):
+    plt.rc("text", usetex=True)
+    plt.rc("font", family="serif")
+    with PdfPages(filename) as pdf:
+        fig, ax = plt.subplots()
+        line_a = ax.plot(xspan, ysttpp_rbm, '-', c='red', linewidth=2, label='STTPP')
+        line_b = ax.plot(xspan, ysvd, '-', c='blue', linewidth=2, label='SVD')
+        line_r = ax.plot(xspan, yae, '-', c='green', linewidth=2, label='Autoencoder')
+        plt.axvline(x=xspan[ysttpp_rbm.argmax()], linestyle='-.', c='red', linewidth=1)
+        plt.axvline(x=xspan[ysvd.argmax()]+0.05, linestyle='-.', c='blue', linewidth=1)
+        plt.axvline(x=xspan[yae.argmax()], linestyle='-.', c='green', linewidth=1)
+        plt.title(title)
+        plt.xlabel(xlabel)
+        plt.ylabel(ylabel)
+        legend = ax.legend(loc='upper right')
+        # Put a nicer background color on the legend.
+        legend.get_frame()
+        pdf.savefig(fig)
+
 if __name__ == '__main__':
 
-    # results of convergence analysis
-    all_precision = np.loadtxt("result/other_precision_convergence.txt", delimiter=',')
-    all_recall    = np.loadtxt("result/other_recalls_convergence.txt", delimiter=',')
-    all_loglik    = np.loadtxt('result/other_loglik_convergence.txt', delimiter=',')
-    all_lowerb    = np.loadtxt('result/other_lowerb_convergence.txt', delimiter=',')
-    burglary_precision = np.loadtxt("result/burglary_precision_convergence.txt", delimiter=',')
-    burglary_recall    = np.loadtxt("result/burglary_recalls_convergence.txt", delimiter=',')
-    burglary_loglik    = np.loadtxt('result/burglary_loglik_convergence.txt', delimiter=',')
-    burglary_lowerb    = np.loadtxt('result/burglary_lowerb_convergence.txt', delimiter=',')
-    robbery_precision = np.loadtxt("result/robbery_precision_convergence.txt", delimiter=',')
-    robbery_recall    = np.loadtxt("result/robbery_recalls_convergence.txt", delimiter=',')
-    robbery_loglik    = np.loadtxt('result/robbery_loglik_convergence.txt', delimiter=',')
-    robbery_lowerb    = np.loadtxt('result/robbery_lowerb_convergence.txt', delimiter=',')
+    # # results of convergence analysis
+    # all_precision = np.loadtxt("result/other_precision_convergence.txt", delimiter=',')
+    # all_recall    = np.loadtxt("result/other_recalls_convergence.txt", delimiter=',')
+    # all_loglik    = np.loadtxt('result/other_loglik_convergence.txt', delimiter=',')
+    # all_lowerb    = np.loadtxt('result/other_lowerb_convergence.txt', delimiter=',')
+    # burglary_precision = np.loadtxt("result/burglary_precision_convergence.txt", delimiter=',')
+    # burglary_recall    = np.loadtxt("result/burglary_recalls_convergence.txt", delimiter=',')
+    # burglary_loglik    = np.loadtxt('result/burglary_loglik_convergence.txt', delimiter=',')
+    # burglary_lowerb    = np.loadtxt('result/burglary_lowerb_convergence.txt', delimiter=',')
+    # robbery_precision = np.loadtxt("result/robbery_precision_convergence.txt", delimiter=',')
+    # robbery_recall    = np.loadtxt("result/robbery_recalls_convergence.txt", delimiter=',')
+    # robbery_loglik    = np.loadtxt('result/robbery_loglik_convergence.txt', delimiter=',')
+    # robbery_lowerb    = np.loadtxt('result/robbery_lowerb_convergence.txt', delimiter=',')
+    #
+    # # plot loglikelihood over iterations
+    # brokenyaxes_figure(
+    #     xspan=list(range(1, 26)), yrobbery=robbery_loglik, yburglary=burglary_loglik, yall=all_loglik,
+    #     yscaler=1e+4, robbery_ylim=(16.136e+4, 16.143e+4), burglary_ylim=(35.099e+4, 35.110e+4), all_ylim=(53.974e+4, 53.980e+4),
+    #     title='Data log-likelihood over iterations', xlabel='iteration', ylabel='log-likelihood',
+    #     filename='result/comp_loglik_iter25.pdf', is_scientific=True)
+    #
+    # # plot lower bound of loglikelihood over iterations
+    # brokenyaxes_figure(
+    #     xspan=list(range(1, 26)), yrobbery=robbery_lowerb, yburglary=burglary_lowerb, yall=all_lowerb,
+    #     yscaler=1e+4, robbery_ylim=(7.111e+4, 7.114e+4), burglary_ylim=(25.552e+4, 25.554e+4), all_ylim=(45.572e+4, 45.574e+4),
+    #     title='Lower bound of data log-likelihood over iterations', xlabel='iteration', ylabel='lower bound of log-likelihood',
+    #     filename='result/comp_lowerb_iter25.pdf', is_scientific=True)
+    #
+    # # plot precision over iterations
+    # brokenyaxes_figure(
+    #     xspan=list(range(1, 26)), yrobbery=robbery_precision, yburglary=burglary_precision, yall=all_precision,
+    #     yscaler=1e-2, robbery_ylim=(1.5e-2, 6.5e-2), burglary_ylim=(2.5e-2, 7.5e-2), all_ylim=(9.1e-2, 14.1e-2),
+    #     title='Precision over iterations', xlabel='iteration', ylabel='precision',
+    #     filename='result/comp_precision_iter25.pdf', is_scientific=True)
+    #
+    # brokenyaxes_figure(
+    #     xspan=list(range(1, 26)), yrobbery=robbery_recall, yburglary=burglary_recall, yall=all_recall,
+    #     yscaler=1e-1, robbery_ylim=(2.0e-1, 2.8e-1), burglary_ylim=(0.7e-1, 1.5e-1), all_ylim=(1.5e-1, 2.3e-1),
+    #     title='Recall over iterations', xlabel='iteration', ylabel='recall',
+    #     filename='result/comp_recall_iter25.pdf', is_scientific=True)
 
-    # plot loglikelihood over iterations
-    brokenyaxes_figure(
-        xspan=list(range(1, 26)), yrobbery=robbery_loglik, yburglary=burglary_loglik, yall=all_loglik,
-        yscaler=1e+4, robbery_ylim=(16.136e+4, 16.143e+4), burglary_ylim=(35.099e+4, 35.110e+4), all_ylim=(53.974e+4, 53.980e+4),
-        title='Data log-likelihood over iterations', xlabel='iteration', ylabel='log-likelihood',
-        filename='result/comp_loglik_iter25.pdf', is_scientific=True)
+    # # result of spatio factor analysis
+    # all_precision      = np.loadtxt("result/other_precision_N_from100to1000.txt", delimiter=',')
+    # all_recall         = np.loadtxt("result/other_recalls_N_from100to1000.txt", delimiter=',')
+    # burglary_precision = np.loadtxt("result/burglary_precision_N_from100to1000.txt", delimiter=',')
+    # burglary_recall    = np.loadtxt("result/burglary_recalls_N_from100to1000.txt", delimiter=',')
+    # robbery_precision  = np.loadtxt("result/robbery_precision_N_from100to1000.txt", delimiter=',')
+    # robbery_recall     = np.loadtxt("result/robbery_recalls_N_from100to1000.txt", delimiter=',')
+    #
+    # all_precision      = all_precision.mean(axis=1)
+    # all_recall         = all_recall.mean(axis=1)
+    # burglary_precision = burglary_precision.mean(axis=1)
+    # burglary_recall    = burglary_recall.mean(axis=1)
+    # robbery_precision  = robbery_precision.mean(axis=1)
+    # robbery_recall     = robbery_recall.mean(axis=1)
+    #
+    # # precision
+    # lines_figure(
+    #     np.linspace(100, 1000, 51).astype(np.int32), robbery_precision, burglary_precision, all_precision,
+    #     title='Precision of retrieval', xlabel=r'$N$', ylabel='precision',
+    #     filename='result/comp_precision_N_from100to1000.pdf')
+    #
+    # # recall
+    # lines_figure(
+    #     np.linspace(100, 1000, 51).astype(np.int32), robbery_recall, burglary_recall, all_recall,
+    #     title='Recall of retrieval', xlabel=r'$N$', ylabel='recall',
+    #     filename='result/comp_recall_N_from100to1000.pdf')
+    #
+    # # f-score
+    # lines_figure(
+    #     np.linspace(100, 1000, 51).astype(np.int32),
+    #     2 * (robbery_precision * robbery_recall) / (robbery_precision + robbery_recall),
+    #     2 * (burglary_precision * burglary_recall) / (burglary_precision + burglary_recall),
+    #     2 * (all_precision * all_recall) / (all_precision + all_recall),
+    #     title=r'$F_1$-score of retrieval', xlabel=r'$N$', ylabel=r'$F_1$-score',
+    #     filename='result/comp_fscore_N_from100to1000.pdf')
 
-    # plot lower bound of loglikelihood over iterations
-    brokenyaxes_figure(
-        xspan=list(range(1, 26)), yrobbery=robbery_lowerb, yburglary=burglary_lowerb, yall=all_lowerb,
-        yscaler=1e+4, robbery_ylim=(7.111e+4, 7.114e+4), burglary_ylim=(25.552e+4, 25.554e+4), all_ylim=(45.572e+4, 45.574e+4),
-        title='Lower bound of data log-likelihood over iterations', xlabel='iteration', ylabel='lower bound of log-likelihood',
-        filename='result/comp_lowerb_iter25.pdf', is_scientific=True)
-
-    # plot precision over iterations
-    brokenyaxes_figure(
-        xspan=list(range(1, 26)), yrobbery=robbery_precision, yburglary=burglary_precision, yall=all_precision,
-        yscaler=1e-2, robbery_ylim=(1.5e-2, 6.5e-2), burglary_ylim=(2.5e-2, 7.5e-2), all_ylim=(9.1e-2, 14.1e-2),
-        title='Precision over iterations', xlabel='iteration', ylabel='precision',
-        filename='result/comp_precision_iter25.pdf', is_scientific=True)
-
-    brokenyaxes_figure(
-        xspan=list(range(1, 26)), yrobbery=robbery_recall, yburglary=burglary_recall, yall=all_recall,
-        yscaler=1e-1, robbery_ylim=(2.0e-1, 2.8e-1), burglary_ylim=(0.7e-1, 1.5e-1), all_ylim=(1.5e-1, 2.3e-1),
-        title='Recall over iterations', xlabel='iteration', ylabel='recall',
-        filename='result/comp_recall_iter25.pdf', is_scientific=True)
+    # # result of spatio factor analysis
+    # dataset = 'other'
+    # metric  = 'f-score'
+    # sttpp = np.loadtxt("result/%s_%s_N_from100to1000.txt" % (dataset, metric), delimiter=',')
+    # svd   = np.loadtxt("result/svd_%s_%s_N_from100to1000.txt" % (dataset, metric), delimiter=',')
+    # ae    = np.loadtxt("result/autoencoder_%s_%s_N_from100to1000.txt" % (dataset, metric), delimiter=',')
+    #
+    # sttpp = sttpp.mean(axis=1)
+    # svd   = svd.mean(axis=1)
+    # ae    = ae.mean(axis=1)
+    #
+    # baselines_figure(
+    #     np.linspace(100, 1000, 51).astype(np.int32),
+    #     sttpp, svd, ae,
+    #     title='Recall of retrieval for %s cases' % dataset, xlabel=r'$N$', ylabel=metric,
+    #     filename='result/comp_%s_%s_N_from100to1000.pdf' % (dataset, metric))
 
     # result of spatio factor analysis
-    all_precision      = np.loadtxt("result/other_precision_beta1_from-15to0.txt", delimiter=',')
-    all_recall         = np.loadtxt("result/other_recalls_beta1_from-15to0.txt", delimiter=',')
-    burglary_precision = np.loadtxt("result/burglary_precision_beta1_from-15to0.txt", delimiter=',')
-    burglary_recall    = np.loadtxt("result/burglary_recalls_beta1_from-15to0.txt", delimiter=',')
-    robbery_precision  = np.loadtxt("result/robbery_precision_beta1_from-15to0.txt", delimiter=',')
-    robbery_recall     = np.loadtxt("result/robbery_recalls_beta1_from-15to0.txt", delimiter=',')
+    dataset = 'other'
+    sttpp_p = np.loadtxt("result/%s_precision_N_from100to1000.txt" % (dataset), delimiter=',')
+    svd_p   = np.loadtxt("result/svd_%s_precision_N_from100to1000.txt" % (dataset), delimiter=',')
+    ae_p    = np.loadtxt("result/autoencoder_%s_precision_N_from100to1000.txt" % (dataset), delimiter=',')
+    sttpp_r = np.loadtxt("result/%s_recall_N_from100to1000.txt" % (dataset), delimiter=',')
+    svd_r   = np.loadtxt("result/svd_%s_recall_N_from100to1000.txt" % (dataset), delimiter=',')
+    ae_r    = np.loadtxt("result/autoencoder_%s_recall_N_from100to1000.txt" % (dataset), delimiter=',')
 
-    all_precision      = all_precision.mean(axis=1)
-    all_recall         = all_recall.mean(axis=1)
-    burglary_precision = burglary_precision.mean(axis=1)
-    burglary_recall    = burglary_recall.mean(axis=1)
-    robbery_precision  = robbery_precision.mean(axis=1)
-    robbery_recall     = robbery_recall.mean(axis=1)
+    sttpp_p = sttpp_p.mean(axis=1)
+    svd_p   = svd_p.mean(axis=1)
+    ae_p    = ae_p.mean(axis=1)
+    sttpp_r = sttpp_r.mean(axis=1)
+    svd_r   = svd_r.mean(axis=1)
+    ae_r    = ae_r.mean(axis=1)
 
-    # precision
-    lines_figure(
-        np.linspace(0, -15, 51), robbery_precision, burglary_precision, all_precision,
-        title='Precision of 500 retrieval', xlabel=r'$\log \beta_1$', ylabel='precision',
-        filename='result/comp_precision_beta1_from-15to0.pdf')
+    sttpp = 2 * (sttpp_p * sttpp_r) / (sttpp_p + sttpp_r + 1e+10)
+    svd   = 2 * (svd_p * svd_r) / (svd_p + svd_r + 1e+10)
+    ae    = 2 * (ae_p * ae_r) / (ae_p + ae_r + 1e+10)
+    #     2 * (burglary_precision * burglary_recall) / (burglary_precision + burglary_recall),
+    #     2 * (all_precision * all_recall) / (all_precision + all_recall),
 
-    # recall
-    lines_figure(
-        np.linspace(0, -15, 51), robbery_recall, burglary_recall, all_recall,
-        title='Recall of 500 retrieval', xlabel=r'$\log \beta_1$', ylabel='recall',
-        filename='result/comp_recall_beta1_from-15to0.pdf')
-
-    # f-score
-    lines_figure(
-        np.linspace(0, -15, 51),
-        2 * (robbery_precision * robbery_recall) / (robbery_precision + robbery_recall),
-        2 * (burglary_precision * burglary_recall) / (burglary_precision + burglary_recall),
-        2 * (all_precision * all_recall) / (all_precision + all_recall),
-        title=r'$F$-score of 500 retrieval', xlabel=r'$\log \beta_1$', ylabel=r'$F$-score',
-        filename='result/comp_fscore_beta1_from-15to0.pdf')
+    baselines_figure(
+        np.linspace(100, 1000, 51).astype(np.int32),
+        sttpp, svd, ae,
+        title=r'$F_1$ score of retrieval for %s cases' % 'mixed', xlabel=r'$N$', ylabel=r'$F_1$ score',
+        filename='result/comp_%s_%s_N_from100to1000.pdf' % (dataset, 'fscore'))
