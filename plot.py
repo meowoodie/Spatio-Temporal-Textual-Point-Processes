@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
 from matplotlib.backends.backend_pdf import PdfPages
+from collections import defaultdict
 
 def brokenyaxes_figure(
         xspan, yrobbery, yburglary, yall, yscaler=1e+4,
@@ -148,6 +149,55 @@ def baselines_figure(
         # Put a nicer background color on the legend.
         legend.get_frame()
         pdf.savefig(fig)
+
+def corpus_histogram(corpus, dictionary, sort_by="weighted_sum", \
+                     show=False, N=10, file_name="result/test.pdf", title=None):
+    """
+    Calculate the histogram for each of the ngrams that appears in the indicated
+    corpus.
+    """
+    # target corpus with ngrams being sorted by their tfidf values
+    sorted_corpus = [ sorted(doc, key=lambda x: -x[1]) for doc in corpus ]
+    # sorted_corpus = [ doc[doc[:, 1].argsort()] for doc in corpus ]
+    # distributions of each of ngrams in the corpus
+    ngram_dist   = defaultdict(lambda: [])
+    # build dict for distributions of each of ngrams (key=ngram_id, val=list of tfidf values)
+    for doc in sorted_corpus:
+    	for ngram_id, tfidf_val in doc:
+    		ngram_dist[dictionary[ngram_id]].append(tfidf_val)
+    # filter the ngrams which have less than one tfidf value
+    lowfreq_ngrams = [ ngram
+    	for ngram, tfidf_set in ngram_dist.items()
+    	if len(tfidf_set) < 2 ]
+    for ngram in lowfreq_ngrams:
+    	ngram_dist.pop(ngram)
+    # target of sorting indicated by input parameter
+    sort_target = []
+    if sort_by == "count":
+    	# count of each of ngrams in the corpus
+    	sort_target = [ [ ngram, len(tfidf_set) ]
+    		for ngram, tfidf_set in ngram_dist.items() ]
+    elif sort_by == "weighted_sum":
+    	# weighted sum of each of ngrams in the corpus
+    	sort_target = [ [ ngram, sum(tfidf_set) ]
+    		for ngram, tfidf_set in ngram_dist.items() ]
+    # sorted ngrams
+    sorted_ngram = sorted(sort_target, key=lambda x: -x[1])[:N]
+    # visualize the distributions for top N ngrams
+    if show:
+    	import seaborn as sns
+    	with PdfPages(file_name) as pdf:
+    		fig, ax = plt.subplots(1, 1)
+    		sns.set(color_codes=True)
+    		for ngram, value in sorted_ngram:
+    			sns.distplot(ngram_dist[ngram],
+    				hist=False, rug=False, ax=ax, label="%s (%f)" % (ngram, value))
+    		ax.set(xlabel='tfidf value', ylabel='frequency (count)')
+    		if title is not None:
+    			ax.set_title(title, fontweight="bold")
+    		ax.legend(frameon=False)
+    		pdf.savefig(fig)
+    return dict(ngram_dist), sorted_ngram
 
 if __name__ == '__main__':
 

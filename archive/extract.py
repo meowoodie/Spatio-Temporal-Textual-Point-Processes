@@ -12,11 +12,11 @@ import numpy as np
 with open('data/10k.labels.txt', 'r') as fl, \
      open('data/10k.labels.txt', 'r') as fl1, \
      open('data/10k.points.txt', 'r') as fp, \
-     open('resource/embeddings/10k.gbrbm.hid1k.txt', 'r') as ft, \
+     open('resource/embeddings/10k.svd.hid1k.txt', 'r') as ft, \
      open('data/meta/burglary_set.txt', 'r') as fbs, \
-     open('data/meta/robbery_set.txt', 'r') as frs, \
-     open('data/subset_burglary/sub.burglary.gbrbm.hid1k.txt', 'w') as fbw, \
-     open('data/subset_robbery/sub.robbery.gbrbm.hid1k.txt', 'w') as frw:
+     open('data/meta/robbery_set.txt', 'r') as frs:
+     # open('data/subset_burglary/sub.burglary.svd.hid1k.txt', 'w') as fbw, \
+     # open('data/subset_robbery/sub.robbery.svd.hid1k.txt', 'w') as frw:
 
     burglary_set = [ line.strip('\n') for line in fbs ]
     robbery_set  = [ line.strip('\n') for line in frs ]
@@ -38,13 +38,16 @@ with open('data/10k.labels.txt', 'r') as fl, \
             i_robbery_set.append(i)
         i += 1
 
-    print(len(i_burglary_set))
-    print(len(i_robbery_set))
+    print(i_burglary_set)
+    print(i_robbery_set)
 
-    j = 0
-    for line in ft:
-        if j in i_burglary_set:
-            fbw.write(line)
-        elif j in i_robbery_set:
-            frw.write(line)
-        j += 1
+    np.savetxt('data/subset_burglary/sub.burglary.indices.txt', i_burglary_set, delimiter=',')
+    np.savetxt('data/subset_robbery/sub.robbery.indices.txt', i_robbery_set, delimiter=',')
+
+    # j = 0
+    # for line in ft:
+    #     if j in i_burglary_set:
+    #         fbw.write(line)
+    #     elif j in i_robbery_set:
+    #         frw.write(line)
+    #     j += 1

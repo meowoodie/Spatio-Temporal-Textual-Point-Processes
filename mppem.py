@@ -130,7 +130,7 @@ class MPPEM(object):
         if i > j and j in t_indices and i in t_indices:
             numerator    = (self.A[self.u[i]][self.u[j]]**self.alpha) * 1. * np.exp(-1 * self.beta * (self.t[i] - self.t[j]) + np.inner(self.m[i], self.m[j]))
             denominator  = self.Mu[self.u[i]] + self._loglik_subterm_1(i, t_indices).sum()
-            self.P[i][j] = numerator / ( denominator * len(t_indices) )
+            self.P[i][j] = numerator / denominator
 
     def _update_A(self, u, v, T, tau):
         '''update influential matrix A'''
@@ -234,3 +234,6 @@ class MPPEM(object):
             for i in t_indices
             for j in t_indices[t_indices<i] ]
         print('[%s] sum of Pij is %f' % (arrow.now(), sum(test)))
+        # for i in t_indices[0:10]:
+        #     test = [ self.P[i][j] for j in t_indices[t_indices<i] ]
+        #     print('[%s] sum of Pij is %f' % (arrow.now(), sum(test)))
