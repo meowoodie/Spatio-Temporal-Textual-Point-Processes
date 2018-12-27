@@ -15,5 +15,34 @@ We then construct the linkage between crime events by introducing auxiliary vari
 
 Usage
 ---
+Below is an simple example for initialization and fitting of the model.
+```python
+# init MPPEM object
+# - t: a sequence of time
+# - u: a sequence of locations (indices)
+# - l: a sequence of labels (optional)
+# - l: a sequence of marks
+# - d: dimension of components of the point process (number of discretized locations)
+mppem = MPPEM(seq_t=t, seq_u=u, seq_l=l, seq_m=m, d=len(u_set))
+# init A
+distance_matrix = utils.calculate_beats_pairwise_distance(u_set, csv_filename)
+mppem.init_A(distance_matrix, gamma=gamma)
+# init Mu
+mppem.init_Mu(gamma=gamma)
+# fit model
+# - ps:  a list of precisions over iterations
+# - rs:  a list of recalls over iterations
+# - lls: a list of loglikelihoods over iterations
+# - lbs: a list of lower bounds over iterations
+# - t, T:  start and end of the time window for fitting
+# - iters: number of iterations
+ps, rs, lls, lbs = em.fit(T=t[-1], tau=t[0], iters=iters)
+# results
+print(em.P)
+print(em.A)
+```
 
+References
+---
 
+- [Preprint: Crime Linkage Detection by Spatial-Temporal Text Point Processes. S. Zhu and Y. Xie.]()
