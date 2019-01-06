@@ -55,15 +55,15 @@ def exp_baselines(
             em.A  = init_em.A
             ps, rs, _, _ = em.fit(T=t[-1], tau=t[0], iters=iters, first_N=N, specific_labels=specific_labels)
             # p, r = utils.retrieval_test(m, l, specific_labels=specific_labels, first_N=N, is_random=False)
-            # print(p, r)
+            print(p, r)
             precision.append(ps[-1])
             recall.append(rs[-1])
         precisions.append(precision)
         recalls.append(recall)
     
     # save exp results
-    np.savetxt("result/sttpp+lda1k_%s_precision_N_from%dto%d.txt" % (category, min(retrieval_range), max(retrieval_range)), precisions, delimiter=',')
-    np.savetxt("result/sttpp+lda1k_%s_recalls_N_from%dto%d.txt" % (category, min(retrieval_range), max(retrieval_range)), recalls, delimiter=',')
+    np.savetxt("result/lda1k_%s_precision_N_from%dto%d.txt" % (category, min(retrieval_range), max(retrieval_range)), precisions, delimiter=',')
+    np.savetxt("result/lda1k_%s_recalls_N_from%dto%d.txt" % (category, min(retrieval_range), max(retrieval_range)), recalls, delimiter=',')
 
 
 

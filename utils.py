@@ -143,17 +143,17 @@ def load_police_training_data(n=500, category='burglary'):
     geojson_path = '/Users/woodie/Desktop/workspace/Zoning-Analysis/data/apd_beat.geojson'
     if category == 'burglary':
         points_path     = 'data/subset_burglary/sub.burglary.points.txt'
-        marks_path      = 'data/subset_burglary/sub.burglary.lda.hid100.txt' # svd.hid1k.txt'
+        marks_path      = 'data/subset_burglary/sub.burglary.svd.hid1k.txt' # svd.hid1k.txt'
         labels_path     = 'data/subset_burglary/sub.burglary.labels.txt'
         specific_labels = ['burglary']
     elif category == 'robbery':
         points_path     = 'data/subset_robbery/sub.robbery.points.txt'
-        marks_path      = 'data/subset_robbery/sub.robbery.lda.hid100.txt' # svd.hid1k.txt'
+        marks_path      = 'data/subset_robbery/sub.robbery.svd.hid1k.txt' # svd.hid1k.txt'
         labels_path     = 'data/subset_robbery/sub.robbery.labels.txt'
         specific_labels = ['pedrobbery', 'DIJAWAN_ADAMS', 'JAYDARIOUS_MORRISON', 'JULIAN_TUCKER', 'THADDEUS_TODD']
     else:
         points_path     = 'data/10k.points.txt'
-        marks_path      = 'resource/embeddings/10k.lda.hid100.txt' # svd.hid1k.txt'
+        marks_path      = 'resource/embeddings/10k.svd.hid1k.txt' # svd.hid1k.txt'
         labels_path     = 'data/10k.labels.txt'
         specific_labels = ['burglary', 'pedrobbery', 'DIJAWAN_ADAMS', 'JAYDARIOUS_MORRISON', 'JULIAN_TUCKER', 'THADDEUS_TODD']
     # load data

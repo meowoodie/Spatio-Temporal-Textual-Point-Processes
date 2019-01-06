@@ -4,6 +4,9 @@ from matplotlib.ticker import FormatStrFormatter
 from matplotlib.backends.backend_pdf import PdfPages
 from collections import defaultdict
 
+from gensim import corpora, models
+from gensim.matutils import corpus2dense
+
 def brokenyaxes_figure(
         xspan, yrobbery, yburglary, yall, yscaler=1e+4,
         robbery_ylim=(1.6136e+5, 1.6143e+5), burglary_ylim=(3.5099e+5, 3.5110e+5), all_ylim=(5.3974e+5, 5.3980e+5),
@@ -129,19 +132,27 @@ def lines_figure(
         pdf.savefig(fig)
 
 def baselines_figure(
-        xspan, ysttpp_rbm, ysvd, yae,
+        xspan, ysttpp_rbm, yrbm, ysvd, yae, ylda, yrand,
         title='Recall of 500 retrieval', xlabel=r'$N$', ylabel='recall',
         filename='result/comp_burglary_fscore_N_from100to1000.pdf'):
     plt.rc("text", usetex=True)
     plt.rc("font", family="serif")
     with PdfPages(filename) as pdf:
         fig, ax = plt.subplots()
-        line_a = ax.plot(xspan, ysttpp_rbm, '-', c='red', linewidth=2, label='STTPP')
-        line_b = ax.plot(xspan, ysvd, '-', c='blue', linewidth=2, label='SVD')
-        line_r = ax.plot(xspan, yae, '-', c='green', linewidth=2, label='Autoencoder')
-        plt.axvline(x=xspan[ysttpp_rbm.argmax()], linestyle='-.', c='red', linewidth=1)
-        plt.axvline(x=xspan[ysvd.argmax()]+0.05, linestyle='-.', c='blue', linewidth=1)
+        line6 = ax.plot(xspan, yrand, '-', c='black', linewidth=2, label='Random')
+        line5 = ax.plot(xspan, ylda, '-', c='orange', linewidth=2, label='LDA')
+        line4 = ax.plot(xspan, yae, '-', c='green', linewidth=2, label='Autoencoder')
+        line3 = ax.plot(xspan, ysvd, '-', c='blue', linewidth=2, label='SVD')
+        line2 = ax.plot(xspan, yrbm, '-', c='brown', linewidth=2, label='RegRBM')
+        line1 = ax.plot(xspan, ysttpp_rbm, '-', c='red', linewidth=2, label='STTPP')
+        
+        plt.axvline(x=xspan[yrand.argmax()], linestyle='-.', c='black', linewidth=1)
+        plt.axvline(x=xspan[ylda.argmax()], linestyle='-.', c='orange', linewidth=1)
         plt.axvline(x=xspan[yae.argmax()], linestyle='-.', c='green', linewidth=1)
+        plt.axvline(x=xspan[ysvd.argmax()]+0.05, linestyle='-.', c='blue', linewidth=1)
+        plt.axvline(x=xspan[yrbm.argmax()], linestyle='-.', c='brown', linewidth=1)
+        plt.axvline(x=xspan[ysttpp_rbm.argmax()], linestyle='-.', c='red', linewidth=1)
+        
         plt.title(title)
         plt.xlabel(xlabel)
         plt.ylabel(ylabel)
@@ -200,6 +211,62 @@ def corpus_histogram(corpus, dictionary, sort_by="weighted_sum", \
     return dict(ngram_dist), sorted_ngram
 
 if __name__ == '__main__':
+
+    dataset = 'other'
+    sttpp_p = np.loadtxt("result/%s_precision_N_from100to1000.txt" % (dataset), delimiter=',')
+    rbm_p   = np.loadtxt("result/gbrbm_%s_precision_N_from100to1000.txt" % (dataset), delimiter=',')
+    svd_p   = np.loadtxt("result/svd1k_%s_precision_N_from100to1000.txt" % (dataset), delimiter=',')
+    ae_p    = np.loadtxt("result/autoencoder_%s_precision_N_from100to1000.txt" % (dataset), delimiter=',')
+    lda_p   = np.loadtxt("result/lda1k_%s_precision_N_from100to1000.txt" % (dataset), delimiter=',')
+    rand_p  = np.loadtxt("result/random_%s_precision_N_from100to1000.txt" % (dataset), delimiter=',')
+
+    sttpp_r = np.loadtxt("result/%s_recall_N_from100to1000.txt" % (dataset), delimiter=',')
+    rbm_r   = np.loadtxt("result/gbrbm_%s_recalls_N_from100to1000.txt" % (dataset), delimiter=',')
+    svd_r   = np.loadtxt("result/svd1k_%s_recall_N_from100to1000.txt" % (dataset), delimiter=',')
+    ae_r    = np.loadtxt("result/autoencoder_%s_recall_N_from100to1000.txt" % (dataset), delimiter=',')
+    lda_r   = np.loadtxt("result/lda1k_%s_recalls_N_from100to1000.txt" % (dataset), delimiter=',')
+    rand_r  = np.loadtxt("result/random_%s_recalls_N_from100to1000.txt" % (dataset), delimiter=',')
+    
+    sttpp_p = sttpp_p.mean(axis=1)
+    rbm_p   = rbm_p.mean(axis=1)
+    svd_p   = svd_p.mean(axis=1)
+    ae_p    = ae_p.mean(axis=1)
+    lda_p   = lda_p.mean(axis=1)
+    rand_p  = rand_p.mean(axis=1)
+
+    sttpp_r = sttpp_r.mean(axis=1)
+    rbm_r   = rbm_r.mean(axis=1)
+    svd_r   = svd_r.mean(axis=1)
+    ae_r    = ae_r.mean(axis=1)
+    lda_r   = lda_r.mean(axis=1)
+    rand_r  = rand_r.mean(axis=1)
+    
+    sttpp = 2 * (sttpp_p * sttpp_r) / (sttpp_p + sttpp_r + 1e+10)
+    rbm   = 2 * (rbm_p * rbm_r) / (rbm_p + rbm_r + 1e+10)
+    svd   = 2 * (svd_p * svd_r) / (svd_p + svd_r + 1e+10)
+    ae    = 2 * (ae_p * ae_r) / (ae_p + ae_r + 1e+10)
+    lda   = 2 * (lda_p * lda_r) / (lda_p + lda_r + 1e+10)
+    rand  = 2 * (rand_p * rand_r) / (rand_p + rand_r + 1e+10)
+    #     2 * (burglary_precision * burglary_recall) / (burglary_precision + burglary_recall),
+    #     2 * (all_precision * all_recall) / (all_precision + all_recall),
+    
+    baselines_figure(
+        np.linspace(100, 1000, 51).astype(np.int32),
+        sttpp, rbm, svd, ae, lda, rand,
+        title=r'$F_1$ score of retrieval for %s cases' % 'mixed', xlabel=r'$N$', ylabel=r'$F_1$ score',
+        filename='result/comp_%s_%s_N_from100to1000.pdf' % (dataset, 'fscore'))
+
+    baselines_figure(
+        np.linspace(100, 1000, 51).astype(np.int32),
+        sttpp_r, rbm_r, svd_r, ae_r, lda_r, rand_r,
+        title='Recall of retrieval for %s cases' % dataset, xlabel=r'$N$', ylabel='Recall',
+        filename='result/comp_%s_%s_N_from100to1000.pdf' % (dataset, 'recall'))
+    
+    baselines_figure(
+        np.linspace(100, 1000, 51).astype(np.int32),
+        sttpp_p, rbm_p, svd_p, ae_p, lda_p, rand_p,
+        title='Precision of retrieval for %s cases' % dataset, xlabel=r'$N$', ylabel='Precision',
+        filename='result/comp_%s_%s_N_from100to1000.pdf' % (dataset, 'precision'))
 
     # # results of convergence analysis
     # all_precision = np.loadtxt("result/other_precision_convergence.txt", delimiter=',')
@@ -289,36 +356,12 @@ if __name__ == '__main__':
     # svd   = svd.mean(axis=1)
     # ae    = ae.mean(axis=1)
     #
-    # baselines_figure(
-    #     np.linspace(100, 1000, 51).astype(np.int32),
-    #     sttpp, svd, ae,
-    #     title='Recall of retrieval for %s cases' % dataset, xlabel=r'$N$', ylabel=metric,
-    #     filename='result/comp_%s_%s_N_from100to1000.pdf' % (dataset, metric))
+    
 
-    # result of spatio factor analysis
-    dataset = 'other'
-    sttpp_p = np.loadtxt("result/%s_precision_N_from100to1000.txt" % (dataset), delimiter=',')
-    svd_p   = np.loadtxt("result/svd_%s_precision_N_from100to1000.txt" % (dataset), delimiter=',')
-    ae_p    = np.loadtxt("result/autoencoder_%s_precision_N_from100to1000.txt" % (dataset), delimiter=',')
-    sttpp_r = np.loadtxt("result/%s_recall_N_from100to1000.txt" % (dataset), delimiter=',')
-    svd_r   = np.loadtxt("result/svd_%s_recall_N_from100to1000.txt" % (dataset), delimiter=',')
-    ae_r    = np.loadtxt("result/autoencoder_%s_recall_N_from100to1000.txt" % (dataset), delimiter=',')
-
-    sttpp_p = sttpp_p.mean(axis=1)
-    svd_p   = svd_p.mean(axis=1)
-    ae_p    = ae_p.mean(axis=1)
-    sttpp_r = sttpp_r.mean(axis=1)
-    svd_r   = svd_r.mean(axis=1)
-    ae_r    = ae_r.mean(axis=1)
-
-    sttpp = 2 * (sttpp_p * sttpp_r) / (sttpp_p + sttpp_r + 1e+10)
-    svd   = 2 * (svd_p * svd_r) / (svd_p + svd_r + 1e+10)
-    ae    = 2 * (ae_p * ae_r) / (ae_p + ae_r + 1e+10)
-    #     2 * (burglary_precision * burglary_recall) / (burglary_precision + burglary_recall),
-    #     2 * (all_precision * all_recall) / (all_precision + all_recall),
-
-    baselines_figure(
-        np.linspace(100, 1000, 51).astype(np.int32),
-        sttpp, svd, ae,
-        title=r'$F_1$ score of retrieval for %s cases' % 'mixed', xlabel=r'$N$', ylabel=r'$F_1$ score',
-        filename='result/comp_%s_%s_N_from100to1000.pdf' % (dataset, 'fscore'))
+    # ngram_dict = corpora.Dictionary.load("resource/dict/10k.bigram.dict")
+    # print(ngram_dict)
+    # corpus_tfidf = corpora.MmCorpus('resource/corpus/10k.bigram.tfidf.corpus')
+    # print(corpus_tfidf)
+    #
+    # corpus_tfidf = corpus_tfidf[48:55]
+    # corpus_histogram(corpus_tfidf, ngram_dict, sort_by="weighted_sum", show=True, N=10, file_name="result/test.pdf", title="Pedestrain Robbery Committed by Suspect T")
