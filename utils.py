@@ -143,17 +143,17 @@ def load_police_training_data(n=500, category='burglary'):
     geojson_path = '/Users/woodie/Desktop/workspace/Zoning-Analysis/data/apd_beat.geojson'
     if category == 'burglary':
         points_path     = 'data/subset_burglary/sub.burglary.points.txt'
-        marks_path      = 'data/subset_burglary/sub.burglary.svd.hid1k.txt' # gbrbm.hid1k.txt'
+        marks_path      = 'data/subset_burglary/sub.burglary.lda.hid100.txt' # svd.hid1k.txt'
         labels_path     = 'data/subset_burglary/sub.burglary.labels.txt'
         specific_labels = ['burglary']
     elif category == 'robbery':
         points_path     = 'data/subset_robbery/sub.robbery.points.txt'
-        marks_path      = 'data/subset_robbery/sub.robbery.svd.hid1k.txt' # gbrbm.hid1k.txt'
+        marks_path      = 'data/subset_robbery/sub.robbery.lda.hid100.txt' # svd.hid1k.txt'
         labels_path     = 'data/subset_robbery/sub.robbery.labels.txt'
         specific_labels = ['pedrobbery', 'DIJAWAN_ADAMS', 'JAYDARIOUS_MORRISON', 'JULIAN_TUCKER', 'THADDEUS_TODD']
     else:
         points_path     = 'data/10k.points.txt'
-        marks_path      = 'resource/embeddings/10k.svd.hid1k.txt' # gbrbm.hid1k.txt'
+        marks_path      = 'resource/embeddings/10k.lda.hid100.txt' # svd.hid1k.txt'
         labels_path     = 'data/10k.labels.txt'
         specific_labels = ['burglary', 'pedrobbery', 'DIJAWAN_ADAMS', 'JAYDARIOUS_MORRISON', 'JULIAN_TUCKER', 'THADDEUS_TODD']
     # load data
@@ -186,9 +186,9 @@ def load_police_training_data(n=500, category='burglary'):
     u_set, u = proj2beats(s, geojson_path)
     print('[%s] %d beats were found in the dataset, %d of them are invalid beats.' % \
         (arrow.now(), len(u_set), len(u[u==len(u_set)-1])))
-    return t, s, m, l, u, u_set, specific_labels
+    return t, s, m, l, u, u_set, specific_labels #, t_order
 
-def retrieval_test(embeddings, labels, specific_labels=None, first_N=100):
+def retrieval_test(embeddings, labels, specific_labels=None, first_N=100, is_random=False):
     '''get precision and recall of retrieval test'''
     t_indices = list(range(0, len(embeddings)))
     distantce = lambda i, j: 1 - spatial.distance.cosine(embeddings[i], embeddings[j])
@@ -197,10 +197,17 @@ def retrieval_test(embeddings, labels, specific_labels=None, first_N=100):
         specific_label_cond = lambda i: labels[i] in specific_labels
     else:
         specific_label_cond = lambda i: True
-    # get all the valid pairs
-    pairs = [ [ distantce(i, j), i, j ] for i in t_indices for j in range(i) ]
-    pairs = np.array(pairs)
-    pairs = pairs[pairs[:, 0].argsort()]
+    if is_random:
+        pairs = [ [ 0, i, j ] for i in t_indices for j in range(i) ]
+        pairs = np.array(pairs)
+        arr   = list(range(len(pairs)))
+        np.random.shuffle(arr)
+        pairs = pairs[arr]
+    else:
+        # get all the valid pairs
+        pairs = [ [ distantce(i, j), i, j ] for i in t_indices for j in range(i) ]
+        pairs = np.array(pairs)
+        pairs = pairs[pairs[:, 0].argsort()]
     # get retrieve, hits and relevant
     retrieve  = pairs[-first_N:, [1, 2]].astype(np.int32)
     hits      = [ (i, j) for i, j in retrieve if labels[i] == labels[j] and specific_label_cond(i) ]

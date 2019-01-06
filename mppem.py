@@ -13,7 +13,7 @@ class MPPEM(object):
     Marked Point Process Learning via EM algorithm
     '''
 
-    def __init__(self, d, seq_t, seq_u, seq_l, seq_m=None, alpha=1., beta=1.):
+    def __init__(self, d, seq_t, seq_u, seq_l, seq_m=None, beta=1.):
         # training data
         self.t      = seq_t # time of each of events
         self.u      = seq_u # component of each of events
@@ -26,7 +26,6 @@ class MPPEM(object):
         self.d      = d           # number of components
         # parameters for intensity kernel
         self.beta   = beta                             # parameter for intensity kernel
-        self.alpha  = alpha
         self.A      = np.zeros((self.d, self.d))       # influential matrix for intensity kernel
         self.A_mask = np.ones((self.d, self.d))        # mask for influential matrix
         self.Mu     = np.random.uniform(0, 1, self.d)  # background rates for intensity kernel
@@ -85,14 +84,14 @@ class MPPEM(object):
     def _loglik_subterm_1(self, i, t_indices):
         '''subterm 1 in log-likelihood function'''
         terms = [
-            (self.A[self.u[i]][self.u[j]]**self.alpha) * 1. * np.exp(-1 * self.beta * (self.t[i] - self.t[j]) + np.inner(self.m[i], self.m[j]))
+            self.A[self.u[i]][self.u[j]] * 1. * np.exp(-1 * self.beta * (self.t[i] - self.t[j]) + np.inner(self.m[i], self.m[j]))
             for j in t_indices[t_indices<i] ]
         return np.array(terms)
 
     def _loglik_subterm_2(self, uj, t_indices, T):
         '''subterm 2 in log-likelihood function'''
         terms = [
-            (self.A[self.u[i]][uj]**self.alpha) * (1 - np.exp(- self.beta * (T - self.t[i])) + np.inner(self.m[i], self.m[t_indices[-1]]))
+            self.A[self.u[i]][uj] * (1 - np.exp(- self.beta * (T - self.t[i])) + np.inner(self.m[i], self.m[t_indices[-1]]))
             for i in t_indices]
         return np.array(terms)
 
@@ -128,7 +127,7 @@ class MPPEM(object):
         # get time indices of the indicated window
         t_indices = self._slide_window_indices(T, tau)
         if i > j and j in t_indices and i in t_indices:
-            numerator    = (self.A[self.u[i]][self.u[j]]**self.alpha) * 1. * np.exp(-1 * self.beta * (self.t[i] - self.t[j]) + np.inner(self.m[i], self.m[j]))
+            numerator    = (self.A[self.u[i]][self.u[j]]) * 1. * np.exp(-1 * self.beta * (self.t[i] - self.t[j]) + np.inner(self.m[i], self.m[j]))
             denominator  = self.Mu[self.u[i]] + self._loglik_subterm_1(i, t_indices).sum()
             self.P[i][j] = numerator / denominator
 
@@ -150,7 +149,7 @@ class MPPEM(object):
                 return
             numerator    = sum(numerator)
             denominator  = sum(denominator)
-            self.A[u][v] = (numerator / denominator) # ** (1/self.alpha)
+            self.A[u][v] = (numerator / denominator)
             # print('A(%d, %d) = %f' % (u, v, self.A[u][v]))
 
     def retrieval_test(self, t_indices, specific_labels=None, first_N=100):
