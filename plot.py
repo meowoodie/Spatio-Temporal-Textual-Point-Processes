@@ -144,7 +144,7 @@ def baselines_figure(
         line4 = ax.plot(xspan, yae, '-', c='green', linewidth=2, label='Autoencoder')
         line3 = ax.plot(xspan, ysvd, '-', c='blue', linewidth=2, label='SVD')
         line2 = ax.plot(xspan, yrbm, '-', c='brown', linewidth=2, label='RegRBM')
-        line1 = ax.plot(xspan, ysttpp_rbm, '-', c='red', linewidth=2, label='STTPP')
+        line1 = ax.plot(xspan, ysttpp_rbm, '-', c='red', linewidth=2, label='STTPP+RegRBM')
         
         plt.axvline(x=xspan[yrand.argmax()], linestyle='-.', c='black', linewidth=1)
         plt.axvline(x=xspan[ylda.argmax()], linestyle='-.', c='orange', linewidth=1)
@@ -212,7 +212,7 @@ def corpus_histogram(corpus, dictionary, sort_by="weighted_sum", \
 
 if __name__ == '__main__':
 
-    dataset = 'other'
+    dataset = 'robbery'
     sttpp_p = np.loadtxt("result/%s_precision_N_from100to1000.txt" % (dataset), delimiter=',')
     rbm_p   = np.loadtxt("result/gbrbm_%s_precision_N_from100to1000.txt" % (dataset), delimiter=',')
     svd_p   = np.loadtxt("result/svd1k_%s_precision_N_from100to1000.txt" % (dataset), delimiter=',')
@@ -252,19 +252,19 @@ if __name__ == '__main__':
     
     baselines_figure(
         np.linspace(100, 1000, 51).astype(np.int32),
-        sttpp, rbm, svd, ae, lda, rand,
+        svd, rbm, sttpp, ae, lda, rand,
         title=r'$F_1$ score of retrieval for %s cases' % 'mixed', xlabel=r'$N$', ylabel=r'$F_1$ score',
         filename='result/comp_%s_%s_N_from100to1000.pdf' % (dataset, 'fscore'))
 
     baselines_figure(
         np.linspace(100, 1000, 51).astype(np.int32),
-        sttpp_r, rbm_r, svd_r, ae_r, lda_r, rand_r,
+        svd_r, rbm_r, sttpp_r, ae_r, lda_r, rand_r,
         title='Recall of retrieval for %s cases' % dataset, xlabel=r'$N$', ylabel='Recall',
         filename='result/comp_%s_%s_N_from100to1000.pdf' % (dataset, 'recall'))
     
     baselines_figure(
         np.linspace(100, 1000, 51).astype(np.int32),
-        sttpp_p, rbm_p, svd_p, ae_p, lda_p, rand_p,
+        svd_p, rbm_p, sttpp_p, ae_p, lda_p, rand_p,
         title='Precision of retrieval for %s cases' % dataset, xlabel=r'$N$', ylabel='Precision',
         filename='result/comp_%s_%s_N_from100to1000.pdf' % (dataset, 'precision'))
 

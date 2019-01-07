@@ -3,7 +3,7 @@ Event Correlation Detection
 
 Introduction
 ---
-Consider events represented by *spatial-temporal text*, a data tuple consists of time, location, and text. And we model the sequence of *spatial-temporal text* events using a multivariate Hawkes point process, called s*patial-temporal text* point process. *Spatial-temporal text* point process is essentially a marked multivariate Hawkes process, where each component is discretized location, and text is mark. By using an adapted kernel function, as well as text embedding techniques, our proposed spatial-temporal text point process is able to incorporate the text similarity as part of the influence between events. The intensity function of the point process is shown below.
+Consider events represented by *spatial-temporal text*, a data tuple consists of time, location, and text. And we model the sequence of *spatial-temporal text* events using a multivariate Hawkes point process, called s*patial-temporal text* point process. *Spatial-temporal text* point process is essentially a marked multivariate Hawkes process, where each component is discretized location, and text is mark. By using an adapted kernel function, as well as [text embedding techniques](https://github.com/meowoodie/Regularized-RBM), our proposed spatial-temporal text point process is able to incorporate the text similarity as part of the influence between events. The intensity function of the point process is shown below.
 <p align="center"> 
 <img src=https://github.com/meowoodie/Event-Correlation-Detection/blob/master/imgs/intensity-function.png width="70%">
 </p>
@@ -15,7 +15,7 @@ With the conditional intensity in hand, we explicitly denote the dependence of t
 </p>
 
 
-We then construct the linkage between crime events by introducing auxiliary variables that indicates the probability *i*-th event is linked to *j*-th event. Moreover, an EM algorithm for learning the parameters is presented. 
+We then construct the linkage between events by introducing auxiliary variables that indicates the probability *i*-th event is linked to *j*-th event. Moreover, an EM algorithm for learning the parameters is presented. 
 <p align="center"> 
 <img src=https://github.com/meowoodie/Event-Correlation-Detection/blob/master/imgs/e-step.png width="50%">
 </p>
@@ -29,7 +29,7 @@ Below is an simple example for initialization and fitting of the model.
 ```python
 # init MPPEM object
 # - t: a sequence of time
-# - u: a sequence of locations (indices)
+# - u: a sequence of discretized locations (indices)
 # - l: a sequence of labels (optional)
 # - l: a sequence of marks
 # - d: dimension of components of the point process (number of discretized locations)
@@ -51,6 +51,10 @@ ps, rs, lls, lbs = em.fit(T=t[-1], tau=t[0], iters=iters)
 print(em.P)
 print(em.A)
 ```
+
+Experimental results
+---
+
 
 References
 ---
