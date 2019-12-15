@@ -8,92 +8,132 @@ Marked Point Process Learning via EM algorithm
 import arrow
 import numpy as np
 
-class MPPEM(object):
+class VecMarkedMultivarHawkes(object):
     '''
-    Marked Point Process Learning via EM algorithm
+    Multivariate Hawkes Processes with Vectorized Marks 
+
+    Reference: https://arxiv.org/pdf/1902.00440.pdf
     '''
 
-    def __init__(self, d, seq_t, seq_u, seq_l, seq_m=None, beta=1.):
-        # training data
-        self.t      = seq_t # time of each of events
-        self.u      = seq_u # component of each of events
-        self.m      = seq_m # marks (feature vectors) of each of events
-        self.l      = seq_l # labels of each of events
-        # basic configuration
-        self.T0     = self.t[0]
-        self.Tn     = self.t[-1]
-        self.n      = len(self.t) # number of events
-        self.d      = d           # number of components
-        # parameters for intensity kernel
-        self.beta   = beta                             # parameter for intensity kernel
-        self.A      = np.zeros((self.d, self.d))       # influential matrix for intensity kernel
-        self.A_mask = np.ones((self.d, self.d))        # mask for influential matrix
-        self.Mu     = np.random.uniform(0, 1, self.d)  # background rates for intensity kernel
-        self.P      = np.ones((self.n, self.n)) * -1   # transition probability matrix
-                                                       # -1 means uninitiated value
-        # normalization
-        self.t      = (self.t - self.T0) / (self.Tn - self.T0)
+    # def __init__(self, d, seq_t, seq_u, seq_l, seq_m=None, beta=1.):
+    #     # training data
+    #     self.t      = seq_t # time of each of events
+    #     self.u      = seq_u # component of each of events
+    #     self.m      = seq_m # marks (feature vectors) of each of events
+    #     self.l      = seq_l # labels of each of events
+    #     # basic configuration
+    #     self.T0     = self.t[0]
+    #     self.Tn     = self.t[-1]
+    #     self.n      = len(self.t) # number of events
+    #     self.d      = d           # number of components
+    #     # parameters for intensity kernel
+    #     self.beta   = beta                             # parameter for intensity kernel
+    #     self.A      = np.zeros((self.d, self.d))       # influential matrix for intensity kernel
+    #     self.A_mask = np.ones((self.d, self.d))        # mask for influential matrix
+    #     self.Mu     = np.random.uniform(0, 1, self.d)  # background rates for intensity kernel
+    #     self.P      = np.ones((self.n, self.n)) * -1   # transition probability matrix
+    #                                                    # -1 means uninitiated value
+    #     # normalization
+    #     self.t      = (self.t - self.T0) / (self.Tn - self.T0)
 
-    def _init_P(self, t_indices):
-        '''init transition probability matrix'''
-        # values for initiated P
-        valid_Pij  = [ self.P[i][j]
-            for i in t_indices
-            for j in t_indices[t_indices<i]
-            if self.P[i][j] != -1 ]
-        # positions for uninitiated P
-        invalid_ij = [ [i, j]
-            for i in t_indices
-            for j in t_indices[t_indices<i]
-            if self.P[i][j] == -1 ]
-        # initiate P for the positions where P is uninitiated
-        if len(invalid_ij) > 0:
-            init_val = (1. - sum(valid_Pij)) / len(invalid_ij)
-            for i, j in invalid_ij:
-                self.P[i][j] = init_val + np.random.normal(0, 1e-8, 1)[0]
+    def __init__(self, n_dim, T, seq, beta=1.):
+        '''
+        Params:
+        - n_dim:   the number of dimensions of the sequence.
+        - T:       the time horizon of the sequence.
+        - seq:     the sequence of points with shape (n_point, 1+1+len_vec) where 
+                   the last dimension indicates time, dimension and mark, respectively.
+        - beta:    (optional) temporal decaying factor.
+        '''
+        self.seq   = seq
+        self.T     = T
+        self.n_dim = n_dim
+        self.beta  = beta
+        # configuration
+        n_point = self.seq.shape[0]     # the number of points in the sequence
+        len_vec = self.seq.shape[1] - 2 # the length of the mark vector
+        self.P  = self._random_init_P(n_point)
+        self.A  = self._random_init_A(self.n_dim)
+        self.Mu = self._prop_init_Mu(self.n_dim, self.seq, self.T)
 
-    def init_A(self, distance_matrix, gamma=1e+3):
-        '''init spatial influential matrix'''
-        assert distance_matrix.shape[0] == distance_matrix.shape[1] == self.d, \
-            'invalid shape of distance matrix'
-        # calculate the influential intensity
-        for i in range(self.d):
-            for j in range(self.d):
-                # intensity decay exponentially over the distance
-                self.A[i, j] = 1. / (2.**distance_matrix[i, j]) \
-                    if distance_matrix[i, j] != -1 \
-                    else 0
-        self.A = self.A * gamma
-        # normalization
-        # for i in range(self.d):
-        #     if self.A[i, :].sum() > 0:
-        #         self.A[i, :] = self.A[i, :] / self.A[i, :].sum()
+    @staticmethod
+    def _random_init_P(n_point):
+        '''
+        Uniformly initiate triggerring probability matrix P where each entry p_{ij}
+        indicates how likely point i is triggered by point j (j < i). In addition,
+        p_{ii} indicate the point i is triggered by the background. 
 
-    def init_Mu(self, gamma):
-        '''init background rate Mu for each of the components'''
+        The matrix also requires that the sum of entries P_{ij}, j < i for each i 
+        equals to 1. 
+        '''
+        P = np.random.uniform(low=0., high=1., size=(n_point, n_point))
+        for i in range(n_point):
+            P[i, :i+1] /= P[i, :i+1].sum()
+            P[i, i+1:] = 0
+        return P
+
+    @staticmethod
+    def _random_init_A(n_dim, scale=1e-5):
+        '''
+        Uniformly initiate covariance matrix A_{uv} where each entry indicate the 
+        covariance between dimension u and dimension v.
+        '''
+        return np.random.uniform(low=0., high=1.*scale, size=(n_dim, n_dim))
+
+    @staticmethod
+    def _prop_init_Mu(n_dim, seq, T):
+        '''
+        Initiate the background intensity Mu using the number of points in data 
+        that falls onto the dimension u divided by the size of the time horizon 
+        (i.e. lambda value if we consider each dimension as an individual poisson 
+        process). The initialized Mu vector is proportional to numbers of points
+        in each dimension.
+        '''
         # all data will be used in estimating the initial Mu.
-        u_window  = self.u
-        U_freq    = [ len(u_window[u_window == uj]) for uj in range(self.d) ]
-        U_dist    = [ U_freq[uj] / sum(U_freq) for uj in range(self.d) ]
-        self.Mu   = np.array(U_dist) * gamma
+        Mu            = np.zeros(n_dim)
+        set_s, counts = np.unique(seq[:, 1].astype(np.int32), return_counts=True)
+        for s, c in zip(set_s, counts):
+            Mu[s] = c / T
+        return Mu
 
-    def _slide_window_indices(self, T, tau):
-        '''select the indices of the sequence within the slide window'''
-        return np.where((self.t < T) & (self.t >= tau))[0]
+    def _h(self, i, j):
+        '''
+        h_{ij} denotes a special term: 
+            A_{s_i, s_j} * beta * exp(- beta * (t_i - t_j)) h_i' * h_j.
+        This term will be further used in P matrix update. 
 
-    def _loglik_subterm_1(self, i, t_indices):
-        '''subterm 1 in log-likelihood function'''
-        terms = [
-            self.A[self.u[i]][self.u[j]] * 1. * np.exp(-1 * self.beta * (self.t[i] - self.t[j]) + np.inner(self.m[i], self.m[j]))
-            for j in t_indices[t_indices<i] ]
-        return np.array(terms)
+        See the definition of h_{ij} at Appendix D in the reference.
+        '''
+        h_ij = self.A[self.seq[i, 1], self.seq[j, 1]] * \
+               self.beta * np.exp(- self.beta * (self.seq[i, 0] - self.seq[j, 0])) * \
+               np.dot(self.seq[i, 2:], self.seq[j, 2:])
+        return h_ij
+    
+    def _update_P(self, i, j):
+        '''
+        Update P_{ij} using an EM-like algorithm by maximizing the lower bound 
+        of the log-likelihood function. 
+        '''
+        if i == j:
+            self.P[i, i] = self.Mu[i] / self. 
 
-    def _loglik_subterm_2(self, uj, t_indices, T):
-        '''subterm 2 in log-likelihood function'''
-        terms = [
-            self.A[self.u[i]][uj] * (1 - np.exp(- self.beta * (T - self.t[i])) + np.inner(self.m[i], self.m[t_indices[-1]]))
-            for i in t_indices]
-        return np.array(terms)
+    # def _slide_window_indices(self, T, tau):
+    #     '''select the indices of the sequence within the slide window'''
+    #     return np.where((self.t < T) & (self.t >= tau))[0]
+
+    # def _loglik_subterm_1(self, i, t_indices):
+    #     '''subterm 1 in log-likelihood function'''
+    #     terms = [
+    #         self.A[self.u[i]][self.u[j]] * 1. * np.exp(-1 * self.beta * (self.t[i] - self.t[j]) + np.inner(self.m[i], self.m[j]))
+    #         for j in t_indices[t_indices<i] ]
+    #     return np.array(terms)
+
+    # def _loglik_subterm_2(self, uj, t_indices, T):
+    #     '''subterm 2 in log-likelihood function'''
+    #     terms = [
+    #         self.A[self.u[i]][uj] * (1 - np.exp(- self.beta * (T - self.t[i])) + np.inner(self.m[i], self.m[t_indices[-1]]))
+    #         for i in t_indices]
+    #     return np.array(terms)
 
     def log_likelihood(self, T, tau):
         '''log-likelihood function given t (time sequence) and u (component sequence)'''
@@ -236,3 +276,22 @@ class MPPEM(object):
         # for i in t_indices[0:10]:
         #     test = [ self.P[i][j] for j in t_indices[t_indices<i] ]
         #     print('[%s] sum of Pij is %f' % (arrow.now(), sum(test)))
+
+if __name__ == '__main__':
+    # generate synthetic data
+    # - configuration
+    T       = 1.
+    n_dim   = 3
+    n_point = 10
+    # - data generation
+    seq       = np.random.uniform(low=0., high=T, size=(n_point, 3))
+    t_order   = seq[:, 0].argsort()
+    seq       = seq[t_order, :]
+    seq_s     = np.random.choice(n_dim, n_point)
+    seq[:, 1] = seq_s
+    print(seq)
+    # model unittest
+    hawkes = VecMarkedMultivarHawkes(n_dim=n_dim, T=T, seq=seq)
+    print(hawkes.P)
+    print(hawkes.A)
+    print(hawkes.Mu)
