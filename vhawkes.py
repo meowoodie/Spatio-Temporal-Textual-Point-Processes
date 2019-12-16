@@ -7,6 +7,7 @@ Marked Point Process Learning via EM algorithm
 
 import arrow
 import numpy as np
+import utils
 
 class VecMarkedMultivarHawkes(object):
     '''
@@ -36,6 +37,8 @@ class VecMarkedMultivarHawkes(object):
         self.A  = self._random_init_A(self.n_dim)
         self.Mu = self._prop_init_Mu(self.n_dim, self.seq, self.T)
         self.M  = self._calculate_pairwise_mark_inner_prod(self.seq[:, 2:])
+
+    # Initialization functions
 
     @staticmethod
     def _random_init_P(n_point):
@@ -127,6 +130,8 @@ class VecMarkedMultivarHawkes(object):
         self._DA = np.zeros(self.n_point)
         for j in range(self.n_point):
             self._DA[j] = 1 - np.exp(- self.beta * (self.T - self.seq[j, 0]))
+
+    # Update rules for P matrix and A matrix
                 
     def _update_P(self, i, j):
         '''
@@ -152,53 +157,30 @@ class VecMarkedMultivarHawkes(object):
         numerator    = (np.outer(ind_si_u, ind_sj_v) * self.P).sum()
         self.A[u, v] = numerator / denominator
 
-    # def retrieval_test(self, t_indices, specific_labels=None, first_N=100):
-    #     '''get precision and recall of retrieval test'''
-    #     # only do the test on the specific labels if specific_labels is not None
-    #     if specific_labels:
-    #         specific_label_cond = lambda i: self.l[i] in specific_labels
-    #     else:
-    #         specific_label_cond = lambda i: True
-    #     # get all the valid pairs
-    #     pairs = [ [ self.P[i][j], i, j ] for i in t_indices for j in range(i) ]
-    #     pairs = np.array(pairs)
-    #     pairs = pairs[pairs[:, 0].argsort()]
-    #     # print(len(pairs))
-    #     # get retrieve, hits and relevant
-    #     retrieve  = pairs[-first_N:, [1, 2]].astype(np.int32)
-    #     hits      = [ (i, j) for i, j in retrieve if self.l[i] == self.l[j] and specific_label_cond(i) ]
-    #     relevant  = [ (i, j) for i in t_indices for j in range(i) if self.l[i] == self.l[j] and specific_label_cond(i) ]
-    #     # print(len(relevant))
-    #     # get precision and recall
-    #     precision = len(hits) / len(retrieve) if len(retrieve) != 0 else 0.
-    #     recall    = len(hits) / len(relevant) if len(relevant) != 0 else 0.
-    #     return len(retrieve), precision, recall
+    # log-likelihood value
 
-    def em_fit(self, iters=100):
+    def log_likelihood(self):
+        '''
+        Log-likelihood of the input sequence given current parameters.
+        '''
+        term1 = np.array([ 
+            np.log(self.Mu[int(self.seq[i, 1])] + self._H[i])
+            for i in range(self.n_point) ]).sum()
+        term2 = - self.Mu.sum() * self.T * len(np.unique(self.seq[:, 2:], axis=0))
+        term3 = - np.array([
+            np.array([ self.A[k, int(self.seq[j, 1])] for j in range(self.n_point) ]) * \
+            self._DA * self.M.sum(axis=0)
+            for k in range(self.n_dim) ]).sum()
+        loglik = term1 + term2 + term3
+        return loglik
+
+    # model fitting using EM like algorithm
+
+    def em_fit(self, iters=2, verbose=True):
         '''
         maximize the lower bound of the loglikelihood function by estimating
         matrix P and matrix A iteratively.
         '''
-        # # F-1 score
-        # F_1 = lambda p, r: 2 * p * r / (p + r) if (p + r) != 0. else 0.
-        # # normalization
-        # T   = (T - self.T0) / (self.Tn - self.T0)
-        # tau = (tau - self.T0) / (self.Tn - self.T0)
-        # # get time indices of the indicated window
-        # t_indices = self._slide_window_indices(T, tau)
-        # print('[%s] %d points will be fitted.' % (arrow.now(), len(t_indices)))
-        # # init P
-        # self._init_P(t_indices)
-        # n_alerts, init_precision, init_recall = self.retrieval_test(t_indices, specific_labels=specific_labels, first_N=first_N)
-        # print('[%s] iter %d\tlower bound:\t%f' % (arrow.now(), 0, self.log_likelihood(T, tau)))
-        # print('[%s] \t\tnum of alerts:%d,\tprecision:\t%f,\trecall:\t%f,\tF-1 score:\t%f.' % \
-        #     (arrow.now(), n_alerts, init_precision, init_recall, F_1(init_precision, init_recall)))
-        # # training iters
-        # precisions = []
-        # recalls    = []
-        # logliks    = []
-        # lowerbs    = []
-
         # calculate the denominator of A_{uv}
         self._calculate_alpha_denominator()
         for e in range(iters):
@@ -213,22 +195,8 @@ class VecMarkedMultivarHawkes(object):
             for u in range(self.n_dim):
                 for v in range(self.n_dim):
                     self._update_A(u, v)
-
-            # # check sum of P
-            # self.check_P(t_indices)
-            # # get retrieval test results
-            # n_alerts, precision, recall = self.retrieval_test(t_indices, specific_labels=specific_labels, first_N=first_N)
-            # loglik = self.log_likelihood(T, tau)
-            # lowerb = self.jensens_lower_bound(T, tau)
-            # # logging
-            # print('[%s] iter %d\tlog likli: %f,\tlower bound: %f' % (arrow.now(), e+1, loglik, lowerb))
-            # print('[%s] \t\tnum of alerts: %d,\tprecision: %f,\trecall: %f,\tF-1 score: %f.' % \
-            #     (arrow.now(), n_alerts, precision, recall, F_1(precision, recall)))
-            # precisions.append(precision)
-            # recalls.append(recall)
-            # logliks.append(loglik)
-            # lowerbs.append(lowerb)
-        # return precisions, recalls, logliks, lowerbs
+            if verbose:
+                print('[%s] log-likelihood %f' % (arrow.now(), self.log_likelihood()))
 
     def save(self, path):
         np.savetxt(path + "P.txt", self.P, delimiter=',')
@@ -238,21 +206,33 @@ class VecMarkedMultivarHawkes(object):
 
 
 if __name__ == '__main__':
-    # generate synthetic data
+    # UNITTEST 1: RANDOM DATA
     # - configuration
     T       = 1.
     n_dim   = 3
-    n_point = 5
+    n_point = 100
     # - data generation
     seq       = np.random.uniform(low=0., high=T, size=(n_point, 10))
     t_order   = seq[:, 0].argsort()
     seq       = seq[t_order, :]
     seq_s     = np.random.choice(n_dim, n_point)
     seq[:, 1] = seq_s
-    print(seq)
-    # model unittest
-    hawkes = VecMarkedMultivarHawkes(n_dim=n_dim, T=T, seq=seq)
-    print(hawkes.P.sum(axis=1))
-    # print(hawkes.A)
-    # print(hawkes.Mu)
+    # - test model
+    hawkes    = VecMarkedMultivarHawkes(n_dim=n_dim, T=T, seq=seq)
     hawkes.em_fit()
+
+    # # UNITTEST 2: SMALL REAL DATA
+    # # - fetch real data
+    # t, s, m, l, u, u_set, specific_labels = utils.load_police_training_data(n=500, category='burglary')
+    # # - data preparation and configuration
+    # t   = np.expand_dims((t - min(t) + 1000.) / (max(t) - min(t) + 2000.), -1) # time normalization
+    # u   = np.expand_dims(u, -1)
+    # seq = np.concatenate([t, u, m], axis=1)
+    # print(seq) 
+    # print(seq.shape)
+    # n_dim = len(np.unique(u))
+    # T     = 1.
+    # # - test model
+    # hawkes = VecMarkedMultivarHawkes(n_dim=n_dim, T=T, seq=seq)
+    # hawkes.em_fit()
+

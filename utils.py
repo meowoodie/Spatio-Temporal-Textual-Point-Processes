@@ -105,7 +105,7 @@ def proj2beats(s, geojson_path):
 
 def plot_intensities4beats(
         Mu, beats_set, locations=None, labels=None,
-        geojson_path='/Users/woodie/Desktop/workspace/Zoning-Analysis/data/apd_beat.geojson',
+        geojson_path='../Zoning-Analysis/data/geodata/apd_beat.geojson',
         html_path='intensity_map.html',
         center=[33.796480, -84.394220]):
     '''plot background rate intensities over a map.'''
@@ -140,22 +140,22 @@ def plot_intensities4beats(
 def load_police_training_data(n=500, category='burglary'):
     '''load police training data from local files.'''
     # data path
-    geojson_path = '/Users/woodie/Desktop/workspace/Zoning-Analysis/data/apd_beat.geojson'
+    geojson_path = '../Zoning-Analysis/data/geodata/apd_beat.geojson'
     if category == 'burglary':
-        points_path     = 'data/subset_burglary/sub.burglary.points.txt'
-        marks_path      = 'data/subset_burglary/sub.burglary.svd.hid1k.txt' # svd.hid1k.txt'
-        labels_path     = 'data/subset_burglary/sub.burglary.labels.txt'
-        specific_labels = ['burglary']
+        points_path = 'data/subset_burglary/sub.burglary.points.txt'
+        marks_path  = 'data/subset_burglary/sub.burglary.svd.hid1k.txt' # svd.hid1k.txt'
+        labels_path = 'data/subset_burglary/sub.burglary.labels.txt'
+        true_labels = ['burglary']
     elif category == 'robbery':
-        points_path     = 'data/subset_robbery/sub.robbery.points.txt'
-        marks_path      = 'data/subset_robbery/sub.robbery.svd.hid1k.txt' # svd.hid1k.txt'
-        labels_path     = 'data/subset_robbery/sub.robbery.labels.txt'
-        specific_labels = ['pedrobbery', 'DIJAWAN_ADAMS', 'JAYDARIOUS_MORRISON', 'JULIAN_TUCKER', 'THADDEUS_TODD']
+        points_path = 'data/subset_robbery/sub.robbery.points.txt'
+        marks_path  = 'data/subset_robbery/sub.robbery.gbrbm.hid1k.txt' # svd.hid1k.txt'
+        labels_path = 'data/subset_robbery/sub.robbery.labels.txt'
+        true_labels = ['pedrobbery', 'DIJAWAN_ADAMS', 'JAYDARIOUS_MORRISON', 'JULIAN_TUCKER', 'THADDEUS_TODD']
     else:
-        points_path     = 'data/10k.points.txt'
-        marks_path      = 'resource/embeddings/10k.svd.hid1k.txt' # svd.hid1k.txt'
-        labels_path     = 'data/10k.labels.txt'
-        specific_labels = ['burglary', 'pedrobbery', 'DIJAWAN_ADAMS', 'JAYDARIOUS_MORRISON', 'JULIAN_TUCKER', 'THADDEUS_TODD']
+        points_path = 'data/10k.points.txt'
+        marks_path  = 'resource/embeddings/10k.svd.hid1k.txt' # svd.hid1k.txt'
+        labels_path = 'data/10k.labels.txt'
+        true_labels = ['burglary', 'pedrobbery', 'DIJAWAN_ADAMS', 'JAYDARIOUS_MORRISON', 'JULIAN_TUCKER', 'THADDEUS_TODD']
     # load data
     print('[%s] loading training data...' % arrow.now())
     labels = []
@@ -186,40 +186,54 @@ def load_police_training_data(n=500, category='burglary'):
     u_set, u = proj2beats(s, geojson_path)
     print('[%s] %d beats were found in the dataset, %d of them are invalid beats.' % \
         (arrow.now(), len(u_set), len(u[u==len(u_set)-1])))
-    return t, s, m, l, u, u_set, specific_labels #, t_order
+    return t, s, m, l, u, u_set, true_labels #, t_order
 
-def retrieval_test(embeddings, labels, specific_labels=None, first_N=100, is_random=False):
-    '''get precision and recall of retrieval test'''
-    t_indices = list(range(0, len(embeddings)))
-    distantce = lambda i, j: 1 - spatial.distance.cosine(embeddings[i], embeddings[j])
-    # only do the test on the specific labels if specific_labels is not None
-    if specific_labels:
-        specific_label_cond = lambda i: labels[i] in specific_labels
+def retrieval_test(hawkes, labels, true_labels=None, first_N=100):
+    '''get precision and recall of one retrieval test'''
+    # only do the test on the true labels if true_labels is not None
+    if true_labels:
+        true_label_cond = lambda i: labels[i] in true_labels
     else:
-        specific_label_cond = lambda i: True
-    if is_random:
-        pairs = [ [ 0, i, j ] for i in t_indices for j in range(i) ]
-        pairs = np.array(pairs)
-        arr   = list(range(len(pairs)))
-        np.random.shuffle(arr)
-        pairs = pairs[arr]
-    else:
-        # get all the valid pairs
-        pairs = [ [ distantce(i, j), i, j ] for i in t_indices for j in range(i) ]
-        pairs = np.array(pairs)
-        pairs = pairs[pairs[:, 0].argsort()]
+        true_label_cond = lambda i: True
+    # get all the valid pairs
+    pairs = [ [ hawkes.P[i][j], i, j ] for i in range(hawkes.n_point) for j in range(i) ]
+    pairs = np.array(pairs)
+    pairs = pairs[pairs[:, 0].argsort()]
     # get retrieve, hits and relevant
     retrieve  = pairs[-first_N:, [1, 2]].astype(np.int32)
-    hits      = [ (i, j) for i, j in retrieve if labels[i] == labels[j] and specific_label_cond(i) ]
-    relevant  = [ (i, j) for i in t_indices for j in range(i) if labels[i] == labels[j] and specific_label_cond(i) ]
-    # print(len(relevant))
+    hits      = [ (i, j) for i, j in retrieve if labels[i] == labels[j] and true_label_cond(i) ]
+    relevant  = [ (i, j) for i in range(hawkes.n_point) for j in range(i) if labels[i] == labels[j] and true_label_cond(i) ]
     # get precision and recall
     precision = len(hits) / len(retrieve) if len(retrieve) != 0 else 0.
     recall    = len(hits) / len(relevant) if len(relevant) != 0 else 0.
     return precision, recall
 
-# if __name__ == '__main__':
-#     csv_filename = 'data/beats_graph.csv'
-#     dist_matrix  = calculate_beats_pairwise_distance(csv_filename)
-#     print(dist_matrix.shape)
-#     print(dist_matrix)
+# def retrieval_test(embeddings, labels, specific_labels=None, first_N=100, is_random=False):
+#     '''get precision and recall of retrieval test'''
+#     t_indices = list(range(0, len(embeddings)))
+#     distantce = lambda i, j: 1 - spatial.distance.cosine(embeddings[i], embeddings[j])
+#     # only do the test on the specific labels if specific_labels is not None
+#     if specific_labels:
+#         specific_label_cond = lambda i: labels[i] in specific_labels
+#     else:
+#         specific_label_cond = lambda i: True
+#     if is_random:
+#         pairs = [ [ 0, i, j ] for i in t_indices for j in range(i) ]
+#         pairs = np.array(pairs)
+#         arr   = list(range(len(pairs)))
+#         np.random.shuffle(arr)
+#         pairs = pairs[arr]
+#     else:
+#         # get all the valid pairs
+#         pairs = [ [ distantce(i, j), i, j ] for i in t_indices for j in range(i) ]
+#         pairs = np.array(pairs)
+#         pairs = pairs[pairs[:, 0].argsort()]
+#     # get retrieve, hits and relevant
+#     retrieve  = pairs[-first_N:, [1, 2]].astype(np.int32)
+#     hits      = [ (i, j) for i, j in retrieve if labels[i] == labels[j] and specific_label_cond(i) ]
+#     relevant  = [ (i, j) for i in t_indices for j in range(i) if labels[i] == labels[j] and specific_label_cond(i) ]
+#     # print(len(relevant))
+#     # get precision and recall
+#     precision = len(hits) / len(retrieve) if len(retrieve) != 0 else 0.
+#     recall    = len(hits) / len(relevant) if len(relevant) != 0 else 0.
+#     return precision, recall
