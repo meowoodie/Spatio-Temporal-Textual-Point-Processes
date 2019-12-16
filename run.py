@@ -34,6 +34,7 @@ def exp_baselines(
     # data preparation and configuration
     t     = np.expand_dims((t - min(t) + 1000.) / (max(t) - min(t) + 2000.), -1) # time normalization
     u     = np.expand_dims(u, -1)
+    m     = m / 1000.
     seq   = np.concatenate([t, u, m], axis=1)
     n_dim = len(np.unique(u))
     T     = 1.
@@ -56,10 +57,10 @@ def exp_baselines(
         recalls.append(recall)
     
     # save exp results
-    np.savetxt("result/newsttpp+gbrbm1k_%s_precision_N_from%dto%d.txt" % \
-        (category, min(retrieval_range), max(retrieval_range)), precisions, delimiter=',')
-    np.savetxt("result/newsttpp+gbrbm1k_%s_recalls_N_from%dto%d.txt" % \
-        (category, min(retrieval_range), max(retrieval_range)), recalls, delimiter=',')
+    # np.savetxt("result/newsttpp+gbrbm1k_%s_precision_N_from%dto%d.txt" % \
+    #     (category, min(retrieval_range), max(retrieval_range)), precisions, delimiter=',')
+    # np.savetxt("result/newsttpp+gbrbm1k_%s_recalls_N_from%dto%d.txt" % \
+    #     (category, min(retrieval_range), max(retrieval_range)), recalls, delimiter=',')
 
 
 

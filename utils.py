@@ -148,7 +148,7 @@ def load_police_training_data(n=500, category='burglary'):
         true_labels = ['burglary']
     elif category == 'robbery':
         points_path = 'data/subset_robbery/sub.robbery.points.txt'
-        marks_path  = 'data/subset_robbery/sub.robbery.gbrbm.hid1k.txt' # svd.hid1k.txt'
+        marks_path  = 'data/subset_robbery/sub.robbery.svd.hid1k.txt' # svd.hid1k.txt'
         labels_path = 'data/subset_robbery/sub.robbery.labels.txt'
         true_labels = ['pedrobbery', 'DIJAWAN_ADAMS', 'JAYDARIOUS_MORRISON', 'JULIAN_TUCKER', 'THADDEUS_TODD']
     else:
